@@ -42,7 +42,7 @@ const seed_admin = async (): Promise<void> => {
       [
         {
           ...super_user,
-          authentication: { exp_date: null, otp: null, token: null },
+          authentication: { expires_at: null, otp: null, token: null },
         },
       ],
       { session }

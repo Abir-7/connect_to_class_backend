@@ -6,9 +6,9 @@ export interface IBaseUser {
   role: TUserRole;
   password: string;
   authentication: {
-    exp_date: Date;
-    otp: number;
-    token: string;
+    expires_at: Date | null;
+    otp: number | null;
+    token: string | null;
   };
   is_verified: boolean;
   need_to_reset_password: boolean;

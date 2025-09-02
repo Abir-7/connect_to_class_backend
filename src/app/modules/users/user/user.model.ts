@@ -24,7 +24,7 @@ const user_schema = new Schema<IUser>(
       required: true,
     },
     authentication: {
-      exp_date: {
+      expires_at: {
         type: Date,
         default: null,
       },
@@ -58,6 +58,6 @@ user_schema.methods.comparePassword = async function (
   }
 };
 
-const User = model<IUser>("PARENT", user_schema);
+const User = model<IUser>("USER", user_schema);
 
 export default User;

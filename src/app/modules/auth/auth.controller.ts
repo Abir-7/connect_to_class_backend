@@ -34,9 +34,9 @@ const user_login = catch_async(async (req, res, next) => {
   });
 });
 
-const verify_user = catch_async(async (req, res, next) => {
+const verify_email = catch_async(async (req, res, next) => {
   const { email, otp } = req.body;
-  const result = await AuthService.verify_user(email, Number(otp));
+  const result = await AuthService.verify_email(email, Number(otp));
 
   send_response(res, {
     success: true,
@@ -109,7 +109,7 @@ const re_send_otp = catch_async(async (req, res) => {
 
 export const AuthController = {
   create_user,
-  verify_user,
+  verify_email,
   forgot_password_request,
   reset_password,
   user_login,
