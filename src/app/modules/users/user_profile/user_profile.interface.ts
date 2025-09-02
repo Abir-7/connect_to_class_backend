@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 
 export interface IUserProfile {
   full_name: string;
-  nickname?: string;
+  nick_name?: string;
   date_of_birth?: Date;
   phone?: string;
   address?: string;

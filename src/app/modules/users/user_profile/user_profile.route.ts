@@ -10,14 +10,14 @@ const router = Router();
 
 router.patch(
   "/update-profile-image",
-  auth("ADMIN", "USER"),
+  auth("ADMIN", "PARENT"),
   upload.single("image"),
   UserProfileController.update_profile_image
 );
 
 router.patch(
   "/update-profile-data",
-  auth("ADMIN", "USER"),
+  auth("ADMIN", "PARENT"),
   zod_validator(zod_update_profile_schema),
   UserProfileController.update_profile_data
 );

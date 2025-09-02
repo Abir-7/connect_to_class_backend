@@ -14,11 +14,13 @@ import mongoose from "mongoose";
 import { is_time_expired } from "../../utils/helper/is_time_expire";
 import { publish_job } from "../../lib/rabbitMq/publisher";
 import { json_web_token } from "../../utils/jwt/jwt";
+import { TUserRole } from "../../interface/auth.interface";
 
 const create_user = async (data: {
   email: string;
   full_name: string;
   password: string;
+  role: TUserRole;
 }): Promise<Partial<IUser>> => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -47,7 +49,7 @@ const create_user = async (data: {
       authentication: { otp, exp_date: expDate },
     };
 
-    const createdUser = await User.create([{ ...userData, role: "USER" }], {
+    const createdUser = await User.create([{ ...userData, role: data.role }], {
       session,
     });
 

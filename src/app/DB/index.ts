@@ -38,7 +38,15 @@ const seed_admin = async (): Promise<void> => {
       super_user.password as string
     );
 
-    const data = await User.create([super_user], { session });
+    const data = await User.create(
+      [
+        {
+          ...super_user,
+          authentication: { exp_date: null, otp: null, token: null },
+        },
+      ],
+      { session }
+    );
     await UserProfile.create([{ ...super_user_profile, user: data[0]._id }], {
       session,
     });

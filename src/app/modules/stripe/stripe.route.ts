@@ -6,7 +6,7 @@ const router = Router();
 
 router.post(
   "/create-payment-intent",
-  auth("USER"),
+  auth("PARENT"),
   StripeController.create_payment_intent
 );
 

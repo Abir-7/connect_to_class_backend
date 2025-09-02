@@ -23,7 +23,11 @@ router.patch(
   AuthController.forgot_password_request
 );
 router.patch("/reset-password", AuthController.reset_password);
-router.patch("/update-password", auth("USER"), AuthController.update_password);
+router.patch(
+  "/update-password",
+  auth("PARENT"),
+  AuthController.update_password
+);
 router.patch("/resend-code", AuthController.re_send_otp);
 
 export const AuthRoute = router;
