@@ -82,28 +82,31 @@ const create_user = async (data: {
   }
 };
 
-const user_login = async (loginData: { email: string; password: string }) => {
-  const user_data = await User.findOne({ email: loginData.email }).select(
-    "+password"
-  );
-  if (!user_data) {
+const user_login = async (login_data: { email: string; password: string }) => {
+  // Select only needed fields + password
+  const user = await User.findOne({ email: login_data.email })
+    .select("email role password is_verified")
+    .lean(); // returns plain JS object, faster than Mongoose doc
+
+  if (!user) {
     throw new AppError(status.BAD_REQUEST, "Please check your email");
   }
 
-  if (user_data.is_verified === false) {
+  if (!user.is_verified) {
     throw new AppError(status.BAD_REQUEST, "Please verify your email.");
   }
 
-  const isPassMatch = await user_data.comparePassword(loginData.password);
-
-  if (!isPassMatch) {
+  // Use the model instance to compare password
+  const user_doc = await User.findById(user._id).select("+password"); // only for comparePassword
+  const is_pass_match = await user_doc!.comparePassword(login_data.password);
+  if (!is_pass_match) {
     throw new AppError(status.BAD_REQUEST, "Please check your password.");
   }
 
   const jwt_payload = {
-    user_email: user_data.email,
-    user_id: user_data._id as string,
-    user_role: user_data.role,
+    user_email: user.email,
+    user_id: user._id.toString(),
+    user_role: user.role,
   };
 
   const {
@@ -118,9 +121,9 @@ const user_login = async (loginData: { email: string; password: string }) => {
     refresh_token,
     access_token_valid_till,
     refresh_token_valid_till,
-    user_id: user_data._id as string,
-    email: user_data.email,
-    role: user_data.role,
+    user_id: user._id.toString(),
+    email: user.email,
+    role: user.role,
   };
 };
 

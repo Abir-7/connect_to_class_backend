@@ -19,8 +19,9 @@ const create_user = catch_async(async (req, res) => {
 });
 
 const user_login = catch_async(async (req, res, next) => {
+  console.time();
   const result = await AuthService.user_login(req.body);
-
+  console.timeEnd();
   res.cookie("refreshToken", result.refresh_token, {
     secure: app_config.server.node_env === "production",
     httpOnly: true,
