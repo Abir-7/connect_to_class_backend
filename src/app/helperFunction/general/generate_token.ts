@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { app_config } from "../../config";
 import { json_web_token } from "../../utils/jwt/jwt";
+
+//----------------------------------------------- used in auth for access token and refresh token
 
 interface JwtPayload {
   user_email: string;

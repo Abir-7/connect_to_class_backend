@@ -66,4 +66,24 @@ const update_profile_data = async (
   return updated;
 };
 
-export const UserProfileService = { update_profile_data, update_profile_image };
+const update_profile = async (
+  userdata: Partial<IUserProfile>,
+  user_id: string
+): Promise<IUserProfile | null> => {
+  const data = remove_falsy_fields(userdata);
+  const updated = await UserProfile.findOneAndUpdate({ user: user_id }, data, {
+    new: true,
+  });
+
+  if (!updated) {
+    throw new AppError(status.BAD_REQUEST, "Failed to update user info.");
+  }
+
+  return updated;
+};
+
+export const UserProfileService = {
+  update_profile_data,
+  update_profile_image,
+  update_profile,
+};

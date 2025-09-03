@@ -19,10 +19,9 @@ const create_user = catch_async(async (req, res) => {
 });
 
 const user_login = catch_async(async (req, res, next) => {
-  console.time();
   const result = await AuthService.user_login(req.body);
-  console.timeEnd();
-  res.cookie("refreshToken", result.refresh_token, {
+
+  res.cookie("refresh_token", result.refresh_token, {
     secure: app_config.server.node_env === "production",
     httpOnly: true,
   });
@@ -36,8 +35,20 @@ const user_login = catch_async(async (req, res, next) => {
 });
 
 const verify_email = catch_async(async (req, res, next) => {
-  const { email, otp } = req.body;
-  const result = await AuthService.verify_email(email, Number(otp));
+  const { user_id, otp } = req.body;
+  const result = await AuthService.verify_email(user_id, Number(otp));
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Email successfully verified.",
+    data: result,
+  });
+});
+
+const verify_reset = catch_async(async (req, res, next) => {
+  const { user_id, otp } = req.body;
+  const result = await AuthService.verify_reset(user_id, Number(otp));
 
   send_response(res, {
     success: true,
@@ -74,9 +85,9 @@ const reset_password = catch_async(async (req, res, next) => {
 });
 
 const get_new_access_token = catch_async(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  const refresh_token = req.cookies.refresh_token || req.body.refresh_token;
 
-  const result = await AuthService.get_new_access_token(refreshToken);
+  const result = await AuthService.get_new_access_token(refresh_token);
   send_response(res, {
     data: result,
     success: true,
@@ -98,8 +109,8 @@ const update_password = catch_async(async (req, res) => {
 });
 
 const re_send_otp = catch_async(async (req, res) => {
-  const { email } = req.body;
-  const result = await AuthService.re_send_otp(email);
+  const { user_id } = req.body;
+  const result = await AuthService.re_send_otp(user_id);
   send_response(res, {
     data: result,
     success: true,
@@ -117,4 +128,5 @@ export const AuthController = {
   get_new_access_token,
   update_password,
   re_send_otp,
+  verify_reset,
 };

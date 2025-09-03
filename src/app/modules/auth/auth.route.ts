@@ -18,6 +18,7 @@ router.post("/get-access-token", AuthController.get_new_access_token);
 router.post("/login", AuthController.user_login);
 
 router.patch("/verify-email", AuthController.verify_email);
+router.patch("/verify-reset-code", AuthController.verify_reset);
 router.patch(
   "/forgot-password-request",
   AuthController.forgot_password_request
