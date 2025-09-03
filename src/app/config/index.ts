@@ -37,9 +37,8 @@ export const app_config = {
     pass: process.env.EMAIL_PASS,
   },
   multer: {
-    file_size_limit:
-      parseInt(process.env.MAX_FILE_SIZE as string) || 5 * 1024 * 1024, // 5MB default
-    max_file_number: parseInt(process.env.MAX_COUNT_FILE as string) || 10,
+    file_size_limit: process.env.MAX_FILE_SIZE,
+    max_file_number: process.env.MAX_COUNT_FILE as string,
   },
   admin: {
     email: process.env.ADMIN_EMAIL,
