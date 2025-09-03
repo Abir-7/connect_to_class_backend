@@ -78,7 +78,6 @@ const update_profile = async (
   if (!updated) {
     throw new AppError(status.BAD_REQUEST, "Failed to update user info.");
   }
-
   return updated;
 };
 
