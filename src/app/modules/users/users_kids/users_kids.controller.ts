@@ -7,13 +7,13 @@ import { UserKidsService } from "./users_kids.service";
 const add_users_kid = catch_async(async (req, res) => {
   const filePath = req.file?.path;
 
-  const userData = {
+  const kids_data = {
     ...req.body,
     ...(filePath && { image: get_relative_path(filePath) }),
     parent: req.user.user_id,
   };
 
-  const result = await UserKidsService.add_users_kids(userData);
+  const result = await UserKidsService.add_users_kids(kids_data);
   send_response(res, {
     success: true,
     status_code: status.OK,

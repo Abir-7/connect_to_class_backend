@@ -139,7 +139,7 @@ const verify_email = async (user_id: string, otp: number) => {
       "OTP is required. Check your email."
     );
   }
-
+  console.log(user_id);
   const user = await User.findOne({ _id: user_id });
   if (!user) {
     throw new AppError(status.BAD_REQUEST, "User not found.");
