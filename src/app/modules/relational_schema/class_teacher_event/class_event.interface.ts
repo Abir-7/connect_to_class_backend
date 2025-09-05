@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 
-export interface IClassEvent {
+export interface IClassEventTeacher {
   event: Types.ObjectId;
   class: Types.ObjectId;
+  teacher: Types.ObjectId;
 }

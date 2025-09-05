@@ -17,4 +17,10 @@ router.post(
   EventController.create_event
 );
 
+router.get(
+  "/get-event-list-of-a-teacher",
+  auth("TEACHER"),
+
+  EventController.get_event_list_of_a_teacher
+);
 export const EventRoute = router;

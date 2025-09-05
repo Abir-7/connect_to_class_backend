@@ -3,10 +3,11 @@
 import mongoose from "mongoose";
 import { IEvent } from "./event.interface";
 import Event from "./event.model";
-import ClassEvent from "../relational_schema/class_event/class_event.model";
+
 import KidsClass from "../kids_class/kids_class.model";
 import AppError from "../../errors/AppError";
 import status from "http-status";
+import ClassEventTeacher from "../relational_schema/class_teacher_event/class_event.model";
 
 interface ICreateEventInput {
   photo?: string;
@@ -20,7 +21,7 @@ interface ICreateEventInput {
   avater_id?: string;
 }
 
-const create_event = async (data: ICreateEventInput) => {
+const create_event = async (data: ICreateEventInput, user_id: string) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -40,11 +41,12 @@ const create_event = async (data: ICreateEventInput) => {
 
     const createdEvent = await Event.create([eventData], { session });
 
-    await ClassEvent.create(
+    await ClassEventTeacher.create(
       [
         {
           event: createdEvent[0]._id,
           class: new mongoose.Types.ObjectId(data.class),
+          teacher: user_id,
         },
       ],
       { session }
@@ -72,6 +74,23 @@ const create_event = async (data: ICreateEventInput) => {
   }
 };
 
+const get_event_list_of_a_teacher = async (user_id: string) => {
+  const event_list = await ClassEventTeacher.find({
+    teacher: user_id,
+  })
+    .populate({
+      path: "event",
+      select: "-class", // 👈 remove class reference from event
+    })
+    .populate({
+      path: "class",
+      select: "class_name description _id", // 👈 only these fields
+    })
+    .select("event class -_id");
+  return event_list;
+};
+
 export const EventService = {
   create_event,
+  get_event_list_of_a_teacher,
 };
