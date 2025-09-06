@@ -11,7 +11,7 @@ const create_event = catch_async(async (req, res) => {
     ...req.body,
     ...(filePath && { image: get_relative_path(filePath) }),
   };
-  const result = await EventService.create_event(event_data, req.user.user_id);
+  const result = await EventService.create_event(event_data);
 
   send_response(res, {
     success: true,

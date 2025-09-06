@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import mongoose from "mongoose";
+import { get_cache, set_cache } from "../../lib/redis/cache";
 import KidsClass from "./kids_class.model";
 
-import TeacherClass from "../relational_schema/teacher_class/teacher_class.model";
 interface ICreateKidsClassInput {
   class_name: string;
   description: string;
@@ -15,34 +14,31 @@ const create_kids_class = async (
   data: ICreateKidsClassInput,
   user_id: string
 ) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const class_data = {
+    ...data,
+    image: data.image || "",
+    teacher: user_id,
+  };
 
-  try {
-    const classData = {
-      ...data,
-      image: data.image || "", // default to empty string if not provided
-    };
+  const created_class = await KidsClass.create(class_data);
 
-    const created_class = await KidsClass.create([classData], { session });
-    await TeacherClass.create(
-      [{ class: created_class[0]._id, teacher: user_id }],
-      { session }
-    );
-    await session.commitTransaction();
-    session.endSession();
+  const cache_key = `teacher_classes:${user_id}`;
+  await set_cache(cache_key, null, 0); // clear cache
 
-    return {
-      class_id: created_class[0]._id,
-      class_name: created_class[0].class_name,
-      description: created_class[0].description,
-      image: created_class[0].image,
-    };
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw Error(error as any);
-  }
+  return created_class;
 };
 
-export const KidsClassService = { create_kids_class };
+const get_my_class = async (user_id: string) => {
+  const cache_key = `teacher_classes:${user_id}`;
+
+  const cachedData = await get_cache<any[]>(cache_key);
+  if (cachedData) return cachedData;
+
+  const class_list = await KidsClass.find({ teacher: user_id }).lean();
+
+  await set_cache(cache_key, class_list, 3600);
+
+  return class_list;
+};
+
+export const KidsClassService = { create_kids_class, get_my_class };

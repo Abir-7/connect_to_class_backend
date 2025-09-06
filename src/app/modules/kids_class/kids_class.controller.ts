@@ -24,6 +24,18 @@ const create_kids_class = catch_async(async (req, res) => {
   });
 });
 
+const get_my_class = catch_async(async (req, res) => {
+  const result = await KidsClassService.get_my_class(req.user.user_id);
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Class list of a teacher successfully fetched.",
+    data: result,
+  });
+});
+
 export const KidsClassController = {
   create_kids_class,
+  get_my_class,
 };

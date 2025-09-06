@@ -1,6 +1,6 @@
-import { Types } from "mongoose";
+import { Document, Types } from "mongoose";
 
-export interface IKids {
+export interface IKids extends Document {
   parent: Types.ObjectId;
   gender: Gender;
   full_name: string;

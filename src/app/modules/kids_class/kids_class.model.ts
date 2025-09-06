@@ -5,10 +5,16 @@ const kids_class_schema: Schema<IClass> = new Schema(
   {
     class_name: { type: String, required: true },
     description: { type: String, required: true },
-    image: { type: String, default: "" }, // can be URL
+    image: { type: String, default: "" },
+    teacher: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
   },
   {
-    timestamps: true, // adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 

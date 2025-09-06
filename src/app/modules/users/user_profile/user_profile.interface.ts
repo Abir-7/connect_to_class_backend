@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 
-export interface IUserProfile {
+export interface IUserProfile extends Document {
   full_name: string;
   nick_name?: string;
   date_of_birth?: Date;

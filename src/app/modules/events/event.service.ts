@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import mongoose from "mongoose";
@@ -7,10 +8,10 @@ import Event from "./event.model";
 import KidsClass from "../kids_class/kids_class.model";
 import AppError from "../../errors/AppError";
 import status from "http-status";
-import ClassEventTeacher from "../relational_schema/class_teacher_event/class_event.model";
+import { get_cache, set_cache } from "../../lib/redis/cache";
 
 interface ICreateEventInput {
-  photo?: string;
+  image?: string;
   event_name: string;
   description: string;
   start_date: number; // timestamp in ms
@@ -21,7 +22,7 @@ interface ICreateEventInput {
   avater_id?: string;
 }
 
-const create_event = async (data: ICreateEventInput, user_id: string) => {
+const create_event = async (data: ICreateEventInput) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -34,39 +35,21 @@ const create_event = async (data: ICreateEventInput, user_id: string) => {
   try {
     const eventData: Partial<IEvent> = {
       ...data,
-      photo: data.photo || "",
+      image: data.image || "",
       avater_id: data.avater_id || "",
       class: new mongoose.Types.ObjectId(data.class),
     };
 
     const createdEvent = await Event.create([eventData], { session });
 
-    await ClassEventTeacher.create(
-      [
-        {
-          event: createdEvent[0]._id,
-          class: new mongoose.Types.ObjectId(data.class),
-          teacher: user_id,
-        },
-      ],
-      { session }
-    );
-
     await session.commitTransaction();
     session.endSession();
 
-    return {
-      _id: createdEvent[0]._id,
-      event_name: createdEvent[0].event_name,
-      description: createdEvent[0].description,
-      start_date: createdEvent[0].start_date,
-      end_date: createdEvent[0].end_date,
-      start_time: createdEvent[0].start_time,
-      end_time: createdEvent[0].end_time,
-      class: createdEvent[0].class,
-      photo: createdEvent[0].photo,
-      avater_id: createdEvent[0].avater_id,
-    };
+    // Invalidate teacher's event list cache
+    const teacherId = classData.teacher.toString();
+    await set_cache(`teacher_events:${teacherId}`, null, 0); // clear cache
+
+    return createdEvent[0];
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -75,19 +58,77 @@ const create_event = async (data: ICreateEventInput, user_id: string) => {
 };
 
 const get_event_list_of_a_teacher = async (user_id: string) => {
-  const event_list = await ClassEventTeacher.find({
-    teacher: user_id,
-  })
-    .populate({
-      path: "event",
-      select: "-class", // 👈 remove class reference from event
-    })
-    .populate({
-      path: "class",
-      select: "class_name description _id", // 👈 only these fields
-    })
-    .select("event class -_id");
-  return event_list;
+  const cacheKey = `teacher_events:${user_id}`;
+
+  // Step 1: Try to get cached data
+  const cachedData = await get_cache<any[]>(cacheKey);
+  if (cachedData) {
+    return cachedData; // cache hit
+  }
+
+  // Step 2: Cache miss → fetch from DB
+  const events = await Event.aggregate([
+    {
+      $lookup: {
+        from: "kidsclasses",
+        localField: "class",
+        foreignField: "_id",
+        as: "classInfo",
+      },
+    },
+    { $unwind: "$classInfo" },
+    { $match: { "classInfo.teacher": new mongoose.Types.ObjectId(user_id) } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "classInfo.teacher",
+        foreignField: "_id",
+        as: "teacherInfo",
+      },
+    },
+    { $unwind: { path: "$teacherInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "userprofiles",
+        localField: "classInfo.teacher",
+        foreignField: "user",
+        as: "teacherProfile",
+      },
+    },
+    { $unwind: { path: "$teacherProfile", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        event_name: 1,
+        description: 1,
+        image: 1,
+        start_date: 1,
+        end_date: 1,
+        start_time: 1,
+        end_time: 1,
+        avater_id: 1,
+        class: {
+          _id: "$classInfo._id",
+          class_name: "$classInfo.class_name",
+          description: "$classInfo.description",
+          image: "$classInfo.image",
+          teacher: {
+            _id: "$teacherInfo._id",
+            email: "$teacherInfo.email",
+            role: "$teacherInfo.role",
+            full_name: "$teacherProfile.full_name",
+            nick_name: "$teacherProfile.nick_name",
+            image: "$teacherProfile.image",
+          },
+        },
+      },
+    },
+  ]);
+
+  // Step 3: Store fresh data in Redis
+  await set_cache(cacheKey, events, 60); // TTL 60s (or adjust)
+
+  return events;
 };
 
 export const EventService = {

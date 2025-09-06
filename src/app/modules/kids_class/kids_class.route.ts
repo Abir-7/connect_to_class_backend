@@ -16,5 +16,10 @@ router.post(
   zod_validator(zod_kids_class_schema),
   KidsClassController.create_kids_class
 );
+router.get(
+  "/get-teachers-class-list",
+  auth("TEACHER"),
+  KidsClassController.get_my_class
+);
 
 export const KidsClassRoute = router;

@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 
 export interface IEvent extends Document {
-  photo?: string | null; // store file path / URL instead of File object in DB
+  image?: string | null; // store file path / URL instead of File object in DB
   event_name: string;
   description: string;
   start_date: number; // timestamp in ms
