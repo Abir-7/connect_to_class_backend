@@ -113,7 +113,7 @@ const add_kids_to_class = async (data: {
   session.startTransaction();
 
   try {
-    // Add kid to class
+    // 1️⃣ Add kid to class (always allow multiple entries)
     const class_kids = await KidsClass.create(
       [
         {
@@ -124,21 +124,33 @@ const add_kids_to_class = async (data: {
       { session }
     );
 
-    // Add parent to class
-    const class_parent = await ParentClass.create(
-      [
-        {
-          class: data.class_id,
-          parent_id: data.parent_id,
-        },
-      ],
-      { session }
-    );
+    // 2️⃣ Add parent to class ONLY if not already added
+    let class_parent: any = null;
+
+    const existingParent = await ParentClass.findOne({
+      class: data.class_id,
+      parent_id: data.parent_id,
+    }).session(session);
+
+    if (!existingParent) {
+      const createdParent = await ParentClass.create(
+        [
+          {
+            class: data.class_id,
+            parent_id: data.parent_id,
+          },
+        ],
+        { session }
+      );
+      class_parent = createdParent[0];
+    } else {
+      class_parent = existingParent;
+    }
 
     await session.commitTransaction();
     session.endSession();
 
-    // ❌ Invalidate both kids + parents cache
+    // 3️⃣ Invalidate both kids + parents cache
     await delete_caches([
       `class:${data.class_id}:kids`,
       `class:${data.class_id}:parents`,
@@ -146,7 +158,7 @@ const add_kids_to_class = async (data: {
 
     return {
       class_kids: class_kids[0],
-      class_parent: class_parent[0],
+      class_parent,
     };
   } catch (error) {
     await session.abortTransaction();
@@ -159,13 +171,11 @@ const get_kids_parent_list_of_a_class = async (
   class_id: string,
   filter: "kids" | "parents"
 ) => {
-  console.log(class_id, filter);
-
   const cacheKey = `class:${class_id}:${filter}`;
 
-  // 1️⃣ Try cache
-  // const cached = await get_cache<any[]>(cacheKey);
-  // if (cached) return cached;
+  //1️⃣ Try cache
+  const cached = await get_cache<any[]>(cacheKey);
+  if (cached) return cached;
 
   const classObjectId = new mongoose.Types.ObjectId(class_id);
   let result: any[] = [];
@@ -241,6 +251,7 @@ const get_kids_parent_list_of_a_class = async (
 
   return result;
 };
+
 export const TeachersClassService = {
   create_teachers_class,
   get_my_class,

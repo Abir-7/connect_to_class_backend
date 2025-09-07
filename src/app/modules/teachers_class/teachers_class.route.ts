@@ -27,11 +27,13 @@ router.get(
   auth("TEACHER"),
   TeachersClassController.search_users
 );
+
 router.post(
   "/add-kids-to-class",
   auth("TEACHER"),
   TeachersClassController.add_kids_to_class
 );
+
 router.get(
   "/get-kids-parent-list-of-a-class/:class_id",
   auth("TEACHER"),
