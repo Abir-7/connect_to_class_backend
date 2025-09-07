@@ -5,10 +5,10 @@ import mongoose from "mongoose";
 import { IEvent } from "./event.interface";
 import Event from "./event.model";
 
-import KidsClass from "../kids_class/kids_class.model";
 import AppError from "../../errors/AppError";
 import status from "http-status";
 import { get_cache, set_cache } from "../../lib/redis/cache";
+import TeachersClass from "../teachers_class/teachers_class.model";
 
 interface ICreateEventInput {
   image?: string;
@@ -26,7 +26,7 @@ const create_event = async (data: ICreateEventInput) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
-  const classData = await KidsClass.findOne({ _id: data.class }).lean();
+  const classData = await TeachersClass.findOne({ _id: data.class }).lean();
 
   if (!classData) {
     throw new AppError(status.NOT_FOUND, "Class data not found.");
@@ -37,7 +37,7 @@ const create_event = async (data: ICreateEventInput) => {
       ...data,
       image: data.image || "",
       avater_id: data.avater_id || "",
-      class: new mongoose.Types.ObjectId(data.class),
+      class: data.class as any,
     };
 
     const createdEvent = await Event.create([eventData], { session });
@@ -70,7 +70,7 @@ const get_event_list_of_a_teacher = async (user_id: string) => {
   const events = await Event.aggregate([
     {
       $lookup: {
-        from: "kidsclasses",
+        from: "teachersclasses",
         localField: "class",
         foreignField: "_id",
         as: "classInfo",

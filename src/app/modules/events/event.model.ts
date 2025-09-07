@@ -11,7 +11,7 @@ const event_schema = new Schema<IEvent>(
     end_time: { type: String, required: true },
     class: {
       type: Schema.Types.ObjectId,
-      ref: "KidsClass",
+      ref: "TeachersClass",
       required: true,
       index: true,
     },

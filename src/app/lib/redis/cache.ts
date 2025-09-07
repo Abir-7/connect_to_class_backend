@@ -56,3 +56,25 @@ export const revalidate_cache = async <T>(
     throw err; // Let your API handle the error
   }
 };
+
+export const delete_cache = async (key: string) => {
+  try {
+    await redis.del(key);
+    logger.debug(`Cache deleted: ${key}`);
+  } catch (err) {
+    logger.error(`Failed to delete cache for key: ${key}`, err);
+  }
+};
+
+/**
+ * ❌ Delete multiple cache keys
+ */
+export const delete_caches = async (keys: string[]) => {
+  try {
+    if (keys.length === 0) return;
+    await redis.del(keys);
+    logger.debug(`Caches deleted: ${keys.join(", ")}`);
+  } catch (err) {
+    logger.error(`Failed to delete caches: ${keys.join(", ")}`, err);
+  }
+};

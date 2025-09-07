@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import { Like } from "./like.model";
 
 const toggle_post_like = async (
@@ -6,8 +5,8 @@ const toggle_post_like = async (
   user_id: string
 ): Promise<{ liked: boolean }> => {
   const existingLike = await Like.findOne({
-    post_id: new mongoose.Types.ObjectId(post_id),
-    user_id: new mongoose.Types.ObjectId(user_id),
+    post_id: post_id,
+    user_id: user_id,
   });
 
   if (existingLike) {
@@ -17,8 +16,8 @@ const toggle_post_like = async (
   } else {
     // Otherwise, add new like
     await Like.create({
-      post_id: new mongoose.Types.ObjectId(post_id),
-      user_id: new mongoose.Types.ObjectId(user_id),
+      post_id: post_id,
+      user_id: user_id,
     });
     return { liked: true };
   }

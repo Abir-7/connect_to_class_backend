@@ -1,8 +1,13 @@
 import { Types } from "mongoose";
 
-export interface IClass extends Document {
+export interface ITeachersClass extends Document {
   class_name: string;
   description: string;
   image: string;
   teacher: Types.ObjectId;
+}
+
+export enum ClassMemberFilter {
+  KIDS = "kids",
+  PARENTS = "parents",
 }

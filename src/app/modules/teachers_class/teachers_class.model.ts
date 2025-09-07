@@ -1,7 +1,7 @@
 import { model, Schema } from "mongoose";
-import { IClass } from "./kids_class.interface";
+import { ITeachersClass } from "./teachers_class.interface";
 
-const kids_class_schema: Schema<IClass> = new Schema(
+const teachers_class_schema: Schema<ITeachersClass> = new Schema(
   {
     class_name: { type: String, required: true },
     description: { type: String, required: true },
@@ -18,6 +18,9 @@ const kids_class_schema: Schema<IClass> = new Schema(
   }
 );
 
-const KidsClass = model<IClass>("KidsClass", kids_class_schema);
+const TeachersClass = model<ITeachersClass>(
+  "TeachersClass",
+  teachers_class_schema
+);
 
-export default KidsClass;
+export default TeachersClass;

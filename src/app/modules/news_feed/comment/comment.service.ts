@@ -27,8 +27,8 @@ const toggle_comment_like = async (
 ): Promise<{ liked: boolean; like?: ICommentLike }> => {
   // Check if user already liked this comment
   const existing_like = await CommentLike.findOne({
-    comment_id: new mongoose.Types.ObjectId(comment_id),
-    user_id: new mongoose.Types.ObjectId(user_id),
+    comment_id: comment_id,
+    user_id: user_id,
   });
 
   if (existing_like) {
@@ -36,8 +36,8 @@ const toggle_comment_like = async (
     return { liked: false }; // user unliked
   } else {
     await CommentLike.create({
-      comment_id: new mongoose.Types.ObjectId(comment_id),
-      user_id: new mongoose.Types.ObjectId(user_id),
+      comment_id: comment_id,
+      user_id: user_id,
     });
 
     return { liked: true };
@@ -54,8 +54,8 @@ const create_reply = async (
   data: ICreateReplyInput
 ): Promise<ICommentReply> => {
   const reply_data = {
-    comment_id: new mongoose.Types.ObjectId(data.comment_id),
-    user_id: new mongoose.Types.ObjectId(data.user_id),
+    comment_id: data.comment_id,
+    user_id: data.user_id,
     reply: data.reply,
   };
   const created_reply = await CommentReply.create(reply_data);
@@ -70,22 +70,16 @@ const delete_comment = async (data: {
 
   try {
     // Step 1: Delete likes of the comment
-    await CommentLike.deleteMany(
-      { comment_id: new mongoose.Types.ObjectId(data.comment_id) },
-      { session }
-    );
+    await CommentLike.deleteMany({ comment_id: data.comment_id }, { session });
 
     // Step 2: Delete replies of the comment
-    await CommentReply.deleteMany(
-      { comment_id: new mongoose.Types.ObjectId(data.comment_id) },
-      { session }
-    );
+    await CommentReply.deleteMany({ comment_id: data.comment_id }, { session });
 
     // Step 3: Delete the comment itself (only if it belongs to the user)
     const deletedComment = await Comment.findOneAndDelete(
       {
-        _id: new mongoose.Types.ObjectId(data.comment_id),
-        user_id: new mongoose.Types.ObjectId(data.user_id),
+        _id: data.comment_id,
+        user_id: data.user_id,
       },
       { session }
     );

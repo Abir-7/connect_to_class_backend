@@ -28,6 +28,7 @@ const get_all_post = async (page = 1, limit = 15): Promise<IPaginatedPosts> => {
   const skip = (page - 1) * limit;
 
   const posts = await Post.aggregate([
+    // Join teacher (User)
     {
       $lookup: {
         from: "users",
@@ -37,6 +38,8 @@ const get_all_post = async (page = 1, limit = 15): Promise<IPaginatedPosts> => {
       },
     },
     { $unwind: "$teacherInfo" },
+
+    // Join teacher profile
     {
       $lookup: {
         from: "userprofiles",
@@ -46,9 +49,48 @@ const get_all_post = async (page = 1, limit = 15): Promise<IPaginatedPosts> => {
       },
     },
     { $unwind: { path: "$teacherProfile", preserveNullAndEmptyArrays: true } },
+
+    // Lookup comments
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "post_id",
+        as: "comments",
+      },
+    },
+    { $addFields: { total_comments: { $size: "$comments" } } },
+
+    // Lookup comment replies (based on all comment ids of this post)
+    {
+      $lookup: {
+        from: "commentreplies",
+        let: { commentIds: "$comments._id" },
+        pipeline: [
+          { $match: { $expr: { $in: ["$comment_id", "$$commentIds"] } } },
+        ],
+        as: "replies",
+      },
+    },
+    { $addFields: { total_replies: { $size: "$replies" } } },
+
+    // Lookup likes
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "post_id",
+        as: "likes",
+      },
+    },
+    { $addFields: { total_likes: { $size: "$likes" } } },
+
+    // Sort & paginate
     { $sort: { createdAt: -1 } },
     { $skip: skip },
     { $limit: limit },
+
+    // Projection
     {
       $project: {
         _id: 1,
@@ -56,6 +98,9 @@ const get_all_post = async (page = 1, limit = 15): Promise<IPaginatedPosts> => {
         description: 1,
         createdAt: 1,
         updatedAt: 1,
+        total_comments: 1,
+        total_replies: 1,
+        total_likes: 1,
         teacher: {
           _id: "$teacherInfo._id",
           email: "$teacherInfo.email",

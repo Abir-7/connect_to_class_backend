@@ -5,7 +5,7 @@ import { LikeController } from "./like.controller";
 const router = Router();
 
 router.post(
-  "/toggle-comment-like",
+  "/toggle-post-like/:post_id",
   auth("PARENT", "TEACHER"),
   LikeController.toggle_post_like
 );
