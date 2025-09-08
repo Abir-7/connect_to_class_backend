@@ -223,7 +223,7 @@ const add_kids_to_class_v2 = async (data: {
         class: data.class_id,
       });
     }
-    if (in_different_class && in_different_class) {
+    if (in_different_class) {
       logger.info("different class");
 
       throw new AppError(500, "Student already in class");
@@ -232,14 +232,22 @@ const add_kids_to_class_v2 = async (data: {
         kids_id: data.kids_id,
       });
 
+      if (!update_kids_class) {
+        throw new AppError(400, "update_kids_class data not found.");
+      }
       const update_parent_class = await ParentClass.findOneAndUpdate(
         { parent_id: data.parent_id, class: update_kids_class?.class },
-        { class: data.class_id }
+        { class: data.class_id },
+        { new: true }
       );
 
-      update_kids_class?.class = data.class_id;
+      if (!update_parent_class) {
+        throw new AppError(400, "update_parent_class data update not failed.");
+      }
 
-      await update_kids_class?.save();
+      update_kids_class.class = data.class_id;
+
+      await update_kids_class.save();
     }
 
     if (in_different_class === false && in_same_class == false) {
