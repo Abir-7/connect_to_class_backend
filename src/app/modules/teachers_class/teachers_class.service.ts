@@ -1,3 +1,4 @@
+import { KidsClass } from "./relational_schema/kids_class.interface.model";
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -5,11 +6,13 @@
 import mongoose from "mongoose";
 import { delete_caches, get_cache, set_cache } from "../../lib/redis/cache";
 import User from "../users/user/user.model";
-import { KidsClass } from "./relational_schema/kids_class.interface.model";
+
 import { ParentClass } from "./relational_schema/parent_class.interface.model";
 import TeachersClass from "./teachers_class.model";
 
 import logger from "../../utils/serverTools/logger";
+import Kids from "../users/users_kids/users_kids.model";
+import AppError from "../../errors/AppError";
 
 interface ICreateTeachersClassInput {
   class_name: string;
@@ -167,6 +170,106 @@ const add_kids_to_class = async (data: {
   }
 };
 
+const add_kids_to_class_v2 = async (data: {
+  kids_id: string;
+  parent_id: string;
+  class_id: string;
+}) => {
+  const get_parents_all_kids = await Kids.find({ parent: data.parent_id });
+  const kids__all_id = get_parents_all_kids.map((kids) => kids._id);
+  if (kids__all_id.length > 1) {
+    const class_list_of_kids = await KidsClass.find({
+      kids_id: { $in: kids__all_id },
+    });
+
+    const grouped_by_class: Record<string, string[]> = {};
+    class_list_of_kids.forEach((entry) => {
+      const class_id = entry.class.toString();
+      if (!grouped_by_class[class_id]) grouped_by_class[class_id] = [];
+      grouped_by_class[class_id].push(entry.kids_id.toString());
+    });
+
+    // Kids in the same class (any group with >1 kid)
+    const same_class_groups = Object.values(grouped_by_class).filter(
+      (kids) => kids.length > 1
+    );
+
+    // Kids in different classes
+    const different_class_groups = Object.values(grouped_by_class).filter(
+      (kids) => kids.length === 1
+    );
+
+    const in_same_class = same_class_groups.some((group) =>
+      group.some((kid_id) => kid_id === data.kids_id)
+    );
+
+    // Check in different class groups
+    const in_different_class = different_class_groups.some((group) =>
+      group.some((kid_id) => kid_id === data.kids_id)
+    );
+
+    if (in_same_class) {
+      logger.info("same class");
+
+      throw new AppError(500, "Student already in class");
+
+      const update_kids_class = await KidsClass.findOneAndUpdate(
+        { kids_id: data.kids_id },
+        { class: data.class_id }
+      );
+
+      const create_parent_class = await ParentClass.create({
+        parent_id: data.parent_id,
+        class: data.class_id,
+      });
+    }
+    if (in_different_class && in_different_class) {
+      logger.info("different class");
+
+      throw new AppError(500, "Student already in class");
+
+      const update_kids_class = await KidsClass.findOne({
+        kids_id: data.kids_id,
+      });
+
+      const update_parent_class = await ParentClass.findOneAndUpdate(
+        { parent_id: data.parent_id, class: update_kids_class?.class },
+        { class: data.class_id }
+      );
+
+      update_kids_class?.class = data.class_id;
+
+      await update_kids_class?.save();
+    }
+
+    if (in_different_class === false && in_same_class == false) {
+      await add_kids_to_class(data);
+    }
+  }
+
+  if (kids__all_id.length === 1 && data.kids_id === kids__all_id[0]) {
+    const is_already_in_class = await KidsClass.findOne({
+      kids_id: kids__all_id[0],
+    });
+
+    if (is_already_in_class) {
+      throw new AppError(500, "Student already in class");
+
+      const update_kids_class = await KidsClass.findOneAndUpdate(
+        { kids_id: data.kids_id },
+        { class: data.class_id }
+      );
+
+      const update_parent_class = await KidsClass.findOneAndUpdate(
+        { kids_id: data.kids_id },
+        { class: data.class_id }
+      );
+    }
+
+    await add_kids_to_class(data);
+  }
+};
+
 const get_kids_parent_list_of_a_class = async (
   class_id: string,
   filter: "kids" | "parents"
@@ -257,5 +360,6 @@ export const TeachersClassService = {
   get_my_class,
   search_users,
   add_kids_to_class,
+  add_kids_to_class_v2,
   get_kids_parent_list_of_a_class,
 };
