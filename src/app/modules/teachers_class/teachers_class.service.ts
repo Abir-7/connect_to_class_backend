@@ -12,7 +12,7 @@ import TeachersClass from "./teachers_class.model";
 
 import logger from "../../utils/serverTools/logger";
 import Kids from "../users/users_kids/users_kids.model";
-import AppError from "../../errors/AppError";
+//import AppError from "../../errors/AppError";
 
 interface ICreateTeachersClassInput {
   class_name: string;
@@ -107,174 +107,291 @@ const search_users = async (
   return users; // This is plain JS object array
 };
 
+// const add_kids_to_class = async (data: {
+//   kids_id: string;
+//   parent_id: string;
+//   class_id: string;
+// }) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // 1️⃣ Add kid to class (always allow multiple entries)
+//     const class_kids = await KidsClass.create(
+//       [
+//         {
+//           class: data.class_id,
+//           kids_id: data.kids_id,
+//         },
+//       ],
+//       { session }
+//     );
+
+//     // 2️⃣ Add parent to class ONLY if not already added
+//     let class_parent: any = null;
+
+//     const existingParent = await ParentClass.findOne({
+//       class: data.class_id,
+//       parent_id: data.parent_id,
+//     }).session(session);
+
+//     if (!existingParent) {
+//       const createdParent = await ParentClass.create(
+//         [
+//           {
+//             class: data.class_id,
+//             parent_id: data.parent_id,
+//           },
+//         ],
+//         { session }
+//       );
+//       class_parent = createdParent[0];
+//     } else {
+//       class_parent = existingParent;
+//     }
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     // 3️⃣ Invalidate both kids + parents cache
+//     await delete_caches([
+//       `class:${data.class_id}:kids`,
+//       `class:${data.class_id}:parents`,
+//     ]);
+
+//     return {
+//       class_kids: class_kids[0],
+//       class_parent,
+//     };
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     throw error;
+//   }
+// };
+
+// const add_kids_to_class_v2 = async (data: {
+//   kids_id: string;
+//   parent_id: string;
+//   class_id: string;
+// }) => {
+//   const get_parents_all_kids = await Kids.find({ parent: data.parent_id });
+//   const kids__all_id = get_parents_all_kids.map((kids) => String(kids._id));
+
+//   if (kids__all_id.length > 1) {
+//     const class_list_of_kids = await KidsClass.find({
+//       kids_id: { $in: kids__all_id },
+//     });
+
+//     const grouped_by_class: Record<string, string[]> = {};
+//     class_list_of_kids.forEach((entry) => {
+//       const class_id = entry.class.toString();
+//       if (!grouped_by_class[class_id]) grouped_by_class[class_id] = [];
+//       grouped_by_class[class_id].push(entry.kids_id.toString());
+//     });
+
+//     // Kids in the same class (any group with >1 kid)
+//     const same_class_groups = Object.values(grouped_by_class).filter(
+//       (kids) => kids.length > 1
+//     );
+
+//     // Kids in different classes
+//     const different_class_groups = Object.values(grouped_by_class).filter(
+//       (kids) => kids.length === 1
+//     );
+
+//     const in_same_class = same_class_groups.some((group) =>
+//       group.some((kid_id) => kid_id === data.kids_id)
+//     );
+
+//     // Check in different class groups
+//     const in_different_class = different_class_groups.some((group) =>
+//       group.some((kid_id) => kid_id === data.kids_id)
+//     );
+
+//     if (in_same_class) {
+//       logger.info("same class");
+
+//       // throw new AppError(500, "Student already in class");
+
+//       const update_kids_class = await KidsClass.findOneAndUpdate(
+//         { kids_id: data.kids_id },
+//         { class: data.class_id },
+//         { new: true }
+//       );
+
+//       const create_parent_class = await ParentClass.create({
+//         parent_id: data.parent_id,
+//         class: data.class_id,
+//       });
+
+//       return {
+//         parant_class: create_parent_class.toObject(),
+//         kids_class: update_kids_class?.toObject(),
+//       };
+//     }
+//     if (in_different_class) {
+//       logger.info("different class");
+
+//       //throw new AppError(500, "Student already in class");
+
+//       const update_kids_class = await KidsClass.findOne({
+//         kids_id: data.kids_id,
+//       });
+
+//       if (!update_kids_class) {
+//         throw new AppError(400, "update_kids_class data not found.");
+//       }
+//       const update_parent_class = await ParentClass.findOneAndUpdate(
+//         { parent_id: data.parent_id, class: update_kids_class?.class },
+//         { class: data.class_id },
+//         { new: true }
+//       );
+
+//       if (!update_parent_class) {
+//         throw new AppError(400, "update_parent_class data update not failed.");
+//       }
+
+//       update_kids_class.class = data.class_id as any;
+
+//       await update_kids_class.save();
+
+//       return {
+//         parant_class: update_parent_class.toObject(),
+//         kids_class: update_kids_class?.toObject(),
+//       };
+//     }
+//     return await add_kids_to_class(data);
+//   }
+
+//   if (kids__all_id.length === 1 && data.kids_id === kids__all_id[0]) {
+//     const is_already_in_class = await KidsClass.findOne({
+//       kids_id: kids__all_id[0],
+//     });
+
+//     if (is_already_in_class) {
+//       // throw new AppError(500, "Student already in class");
+
+//       const update_kids_class = await KidsClass.findOne({
+//         kids_id: data.kids_id,
+//       });
+
+//       if (!update_kids_class) {
+//         throw new AppError(400, "update_kids_class data not found.");
+//       }
+//       const update_parent_class = await ParentClass.findOneAndUpdate(
+//         { parent_id: data.parent_id, class: update_kids_class.class },
+//         { class: data.class_id },
+//         { new: true }
+//       );
+
+//       if (!update_parent_class) {
+//         throw new AppError(400, "update_parent_class data update not failed.");
+//       }
+
+//       update_kids_class.class = data.class_id as any;
+
+//       await update_kids_class.save();
+
+//       return {
+//         parant_class: update_parent_class.toObject(),
+//         kids_class: update_kids_class?.toObject(),
+//       };
+//     }
+//     return await add_kids_to_class(data);
+//   }
+// };
+
 const add_kids_to_class = async (data: {
   kids_id: string;
   parent_id: string;
   class_id: string;
 }) => {
+  // 1️⃣ Fetch all kids of the parent
+  const parentKids = await Kids.find({ parent: data.parent_id }).lean();
+  const parentKidsIds = parentKids.map((k) => String(k._id));
+
+  // 2️⃣ Fetch all class assignments of these kids
+  const kidsClasses = await KidsClass.find({
+    kids_id: { $in: parentKidsIds },
+  }).lean();
+
+  const kidCurrentClass = kidsClasses
+    .find((k) => String(k.kids_id) === data.kids_id)
+    ?.class.toString();
+
+  // 3️⃣ If kid already in the target class → nothing to do
+  if (kidCurrentClass === data.class_id) {
+    const parentClass = await ParentClass.findOne({
+      parent_id: data.parent_id,
+      class: data.class_id,
+    });
+    const kidClass = await KidsClass.findOne({ kids_id: data.kids_id });
+    return {
+      parent_class: parentClass?.toObject(),
+      kids_class: kidClass?.toObject(),
+    };
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // 1️⃣ Add kid to class (always allow multiple entries)
-    const class_kids = await KidsClass.create(
-      [
-        {
-          class: data.class_id,
-          kids_id: data.kids_id,
-        },
-      ],
-      { session }
+    // 4️⃣ Move the kid to the new class
+    const updatedKidClass = await KidsClass.findOneAndUpdate(
+      { kids_id: data.kids_id },
+      { class: data.class_id },
+      { new: true, session, upsert: true }
     );
 
-    // 2️⃣ Add parent to class ONLY if not already added
-    let class_parent: any = null;
+    // 5️⃣ Handle parent-class entries
+    // Old class: check if parent still has other kids there
+    const otherKidsInOldClass = kidsClasses
+      .filter(
+        (k) =>
+          String(k.kids_id) !== data.kids_id &&
+          String(k.class) === kidCurrentClass
+      )
+      .map((k) => String(k.kids_id));
 
-    const existingParent = await ParentClass.findOne({
-      class: data.class_id,
-      parent_id: data.parent_id,
-    }).session(session);
-
-    if (!existingParent) {
-      const createdParent = await ParentClass.create(
-        [
-          {
-            class: data.class_id,
-            parent_id: data.parent_id,
-          },
-        ],
-        { session }
-      );
-      class_parent = createdParent[0];
-    } else {
-      class_parent = existingParent;
+    if (otherKidsInOldClass.length === 0 && kidCurrentClass) {
+      // No other kids → remove old parent-class entry
+      await ParentClass.findOneAndDelete({
+        parent_id: data.parent_id,
+        class: kidCurrentClass,
+      }).session(session);
     }
+    // If there are other kids, parent remains linked to old class
+
+    // New class: ensure parent entry exists
+    await ParentClass.updateOne(
+      { parent_id: data.parent_id, class: data.class_id },
+      { parent_id: data.parent_id, class: data.class_id },
+      { upsert: true, session }
+    );
 
     await session.commitTransaction();
     session.endSession();
 
-    // 3️⃣ Invalidate both kids + parents cache
+    // 6️⃣ Invalidate cache
     await delete_caches([
       `class:${data.class_id}:kids`,
       `class:${data.class_id}:parents`,
     ]);
 
+    const parentClass = await ParentClass.findOne({
+      parent_id: data.parent_id,
+      class: data.class_id,
+    }).lean();
+
     return {
-      class_kids: class_kids[0],
-      class_parent,
+      parent_class: parentClass,
+      kids_class: updatedKidClass.toObject(),
     };
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     throw error;
-  }
-};
-
-const add_kids_to_class_v2 = async (data: {
-  kids_id: string;
-  parent_id: string;
-  class_id: string;
-}) => {
-  const get_parents_all_kids = await Kids.find({ parent: data.parent_id });
-  const kids__all_id = get_parents_all_kids.map((kids) => kids._id);
-  if (kids__all_id.length > 1) {
-    const class_list_of_kids = await KidsClass.find({
-      kids_id: { $in: kids__all_id },
-    });
-
-    const grouped_by_class: Record<string, string[]> = {};
-    class_list_of_kids.forEach((entry) => {
-      const class_id = entry.class.toString();
-      if (!grouped_by_class[class_id]) grouped_by_class[class_id] = [];
-      grouped_by_class[class_id].push(entry.kids_id.toString());
-    });
-
-    // Kids in the same class (any group with >1 kid)
-    const same_class_groups = Object.values(grouped_by_class).filter(
-      (kids) => kids.length > 1
-    );
-
-    // Kids in different classes
-    const different_class_groups = Object.values(grouped_by_class).filter(
-      (kids) => kids.length === 1
-    );
-
-    const in_same_class = same_class_groups.some((group) =>
-      group.some((kid_id) => kid_id === data.kids_id)
-    );
-
-    // Check in different class groups
-    const in_different_class = different_class_groups.some((group) =>
-      group.some((kid_id) => kid_id === data.kids_id)
-    );
-
-    if (in_same_class) {
-      logger.info("same class");
-
-      throw new AppError(500, "Student already in class");
-
-      const update_kids_class = await KidsClass.findOneAndUpdate(
-        { kids_id: data.kids_id },
-        { class: data.class_id }
-      );
-
-      const create_parent_class = await ParentClass.create({
-        parent_id: data.parent_id,
-        class: data.class_id,
-      });
-    }
-    if (in_different_class) {
-      logger.info("different class");
-
-      throw new AppError(500, "Student already in class");
-
-      const update_kids_class = await KidsClass.findOne({
-        kids_id: data.kids_id,
-      });
-
-      if (!update_kids_class) {
-        throw new AppError(400, "update_kids_class data not found.");
-      }
-      const update_parent_class = await ParentClass.findOneAndUpdate(
-        { parent_id: data.parent_id, class: update_kids_class?.class },
-        { class: data.class_id },
-        { new: true }
-      );
-
-      if (!update_parent_class) {
-        throw new AppError(400, "update_parent_class data update not failed.");
-      }
-
-      update_kids_class.class = data.class_id;
-
-      await update_kids_class.save();
-    }
-
-    if (in_different_class === false && in_same_class == false) {
-      await add_kids_to_class(data);
-    }
-  }
-
-  if (kids__all_id.length === 1 && data.kids_id === kids__all_id[0]) {
-    const is_already_in_class = await KidsClass.findOne({
-      kids_id: kids__all_id[0],
-    });
-
-    if (is_already_in_class) {
-      throw new AppError(500, "Student already in class");
-
-      const update_kids_class = await KidsClass.findOneAndUpdate(
-        { kids_id: data.kids_id },
-        { class: data.class_id }
-      );
-
-      const update_parent_class = await KidsClass.findOneAndUpdate(
-        { kids_id: data.kids_id },
-        { class: data.class_id }
-      );
-    }
-
-    await add_kids_to_class(data);
   }
 };
 
@@ -367,7 +484,7 @@ export const TeachersClassService = {
   create_teachers_class,
   get_my_class,
   search_users,
+  // add_kids_to_class,
   add_kids_to_class,
-  add_kids_to_class_v2,
   get_kids_parent_list_of_a_class,
 };
