@@ -50,7 +50,10 @@ const search_users = catch_async(async (req, res) => {
 });
 
 const add_kids_to_class = catch_async(async (req, res) => {
-  const result = await TeachersClassService.add_kids_to_class(req.body);
+  const result = await TeachersClassService.add_kids_to_class(
+    req.body,
+    req.user.user_id
+  );
 
   send_response(res, {
     success: true,

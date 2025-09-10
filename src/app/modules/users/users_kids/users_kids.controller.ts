@@ -22,6 +22,17 @@ const add_users_kid = catch_async(async (req, res) => {
   });
 });
 
+const get_kids_by_parent = catch_async(async (req, res) => {
+  const result = await UserKidsService.get_kids_by_parent(req.user.user_id);
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Kids of a parent added successfully.",
+    data: result,
+  });
+});
+
 export const UserKidsController = {
   add_users_kid,
+  get_kids_by_parent,
 };

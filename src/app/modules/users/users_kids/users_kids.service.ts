@@ -1,3 +1,4 @@
+/* eslint-disable arrow-body-style */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import status from "http-status";
 import AppError from "../../../errors/AppError";
@@ -16,6 +17,10 @@ const add_users_kids = async (userdata: Partial<IKids>) => {
   return created_kids;
 };
 
+const get_kids_by_parent = async (parentId: string) => {
+  return await Kids.find({ parent: parentId }).lean();
+};
 export const UserKidsService = {
   add_users_kids,
+  get_kids_by_parent,
 };

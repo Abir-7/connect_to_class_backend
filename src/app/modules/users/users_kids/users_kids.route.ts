@@ -16,5 +16,10 @@ router.post(
   zod_validator(zod_kids_schema),
   UserKidsController.add_users_kid
 );
+router.get(
+  "/get-kids-by-parent",
+  auth("PARENT"),
+  UserKidsController.get_kids_by_parent
+);
 
 export const UserKidsRoute = router;
