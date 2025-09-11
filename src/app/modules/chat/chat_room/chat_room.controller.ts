@@ -17,4 +17,15 @@ const get_user_chat_list = catch_async(async (req, res) => {
   });
 });
 
-export const ChatRoomController = { get_user_chat_list };
+const get_message_data = catch_async(async (req, res) => {
+  const result = await ChatRoomService.get_message_data(req.params.chat_id);
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Chat list fetched succesfully",
+    data: result,
+  });
+});
+
+export const ChatRoomController = { get_user_chat_list, get_message_data };

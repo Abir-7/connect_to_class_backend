@@ -9,6 +9,10 @@ router.get(
   auth("PARENT", "TEACHER"),
   ChatRoomController.get_user_chat_list
 );
-router.get("/all-message/:chat_room_id", auth("PARENT", "TEACHER"));
+router.get(
+  "/all-message/:chat_id",
+  auth("PARENT", "TEACHER"),
+  ChatRoomController.get_message_data
+);
 
 export const ChatRoute = router;
