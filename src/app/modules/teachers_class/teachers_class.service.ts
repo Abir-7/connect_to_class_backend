@@ -18,6 +18,8 @@ import TeachersClass from "./teachers_class.model";
 import logger from "../../utils/serverTools/logger";
 import Kids from "../users/users_kids/users_kids.model";
 import AppError from "../../errors/AppError";
+import { create_default_class_chats } from "../../helperFunction/with_db_query/create_group_when_new_class_create";
+import { ensureParentChats } from "../../helperFunction/with_db_query/add_parent_to_class_group_when_add";
 
 //import AppError from "../../errors/AppError";
 
@@ -29,7 +31,7 @@ interface ICreateTeachersClassInput {
 
 const create_teachers_class = async (
   data: ICreateTeachersClassInput,
-  teacherId: string
+  teacher_id: string
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -39,15 +41,21 @@ const create_teachers_class = async (
     const classData = {
       ...data,
       image: data.image || "",
-      teacher: teacherId,
+      teacher: teacher_id,
     };
     const created_class = await TeachersClass.create([classData], { session });
+
+    await create_default_class_chats(
+      created_class[0]._id.toString(),
+      teacher_id,
+      session
+    );
 
     await session.commitTransaction();
     session.endSession();
 
     // 4️⃣ Clear cache
-    const cache_key = `teacher_classes:${teacherId}`;
+    const cache_key = `teacher_classes:${teacher_id}`;
     await delete_cache(cache_key); // clear cache
 
     return created_class[0];
@@ -421,6 +429,8 @@ const add_kids_to_class = async (
       { parent_id: data.parent_id, class: data.class_id, status: "active" },
       { upsert: true, session }
     );
+
+    await ensureParentChats(data.parent_id, teacher_id, data.class_id, session);
 
     await session.commitTransaction();
     session.endSession();

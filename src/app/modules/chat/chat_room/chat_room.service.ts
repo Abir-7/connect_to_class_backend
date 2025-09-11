@@ -2,159 +2,159 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Types } from "mongoose";
 
-import { ParentClass } from "../../teachers_class/relational_schema/parent_class.interface.model";
-import { TUserRole } from "../../../interface/auth.interface";
-import ChatRoom from "./chat_room.model";
+import { user_roles } from "../../../interface/auth.interface";
 
-const get_user_chat_list = async (userId: string, role: TUserRole) => {
+import ChatRoom from "./chat_room.model";
+import { ParentClass } from "../../teachers_class/relational_schema/parent_class.interface.model";
+
+const get_user_chat_list = async (
+  userId: string,
+  role: keyof typeof user_roles
+) => {
   if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID");
   const userObjectId = new Types.ObjectId(userId);
 
-  let parentActiveClassIds: Types.ObjectId[] = [];
+  let matchStage: any = {};
 
-  if (role === "PARENT") {
-    // Only active parent-class relationships
-    const activeParentClasses = await ParentClass.find({
+  if (role === user_roles.PARENT) {
+    // Only active classes
+    const activeClasses = await ParentClass.find({
       parent_id: userObjectId,
       status: "active",
-    }).lean();
-    parentActiveClassIds = activeParentClasses.map((c) => c.class);
+    }).select("class");
+
+    const activeClassIds = activeClasses.map((c) => c.class);
+
+    matchStage = {
+      $or: [
+        {
+          type: { $in: ["group", "teacher_only"] },
+          class: { $in: activeClassIds },
+        },
+        { type: "individual" },
+      ],
+    };
+  } else if (role === user_roles.TEACHER) {
+    matchStage = {
+      $or: [{ type: { $in: ["group", "teacher_only", "individual"] } }],
+    };
   }
 
   const chats = await ChatRoom.aggregate([
-    // Membership lookup
+    { $match: matchStage },
+
+    // Join members
     {
       $lookup: {
         from: "chatroommembers",
-        let: { chatId: "$_id" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ["$chat", "$$chatId"] },
-                  { $eq: ["$user", userObjectId] },
-                ],
-              },
-            },
-          },
-        ],
-        as: "membership",
+        localField: "_id",
+        foreignField: "chat",
+        as: "members",
       },
     },
-    // Include chat if:
-    // - Parent: active class OR
-    // - Teacher OR individual where user is member
-    {
-      $match: {
-        $or: [
-          ...(role === "PARENT"
-            ? [{ class: { $in: parentActiveClassIds } }]
-            : []),
-          { "membership.0": { $exists: true } },
-        ],
-      },
-    },
-    // Populate last message sender
+
+    { $match: { "members.user": userObjectId } },
+
+    // Lookup Users
     {
       $lookup: {
         from: "users",
-        localField: "lastMessage.sender",
+        localField: "members.user",
         foreignField: "_id",
-        as: "lastMessageSender",
+        as: "memberUsers",
       },
     },
-    {
-      $addFields: {
-        lastMessageSenderName: {
-          $arrayElemAt: ["$lastMessageSender.full_name", 0],
-        },
-      },
-    },
-    // Only for individual: get other user info
+
+    // Lookup UserProfiles
     {
       $lookup: {
-        from: "chatroommembers",
-        let: { chatId: "$_id" },
-        pipeline: [
-          { $match: { $expr: { $eq: ["$chat", "$$chatId"] } } },
-          { $project: { user: 1 } },
-        ],
-        as: "membersData",
+        from: "userprofiles",
+        localField: "memberUsers._id",
+        foreignField: "user",
+        as: "profiles",
       },
     },
+
+    // Lookup TeachersClass (strip _id, createdAt, updatedAt, __v)
+    {
+      $lookup: {
+        from: "teachersclasses",
+        let: { classId: "$class" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$classId"] } } },
+          {
+            $project: {
+              _id: 0,
+              createdAt: 0,
+              updatedAt: 0,
+              __v: 0,
+            },
+          },
+        ],
+        as: "class_details",
+      },
+    },
+
     {
       $addFields: {
-        otherUserId: {
+        // single user object instead of array
+        other_user: {
           $cond: [
             { $eq: ["$type", "individual"] },
             {
               $let: {
                 vars: {
-                  filtered: {
-                    $filter: {
-                      input: "$membersData.user",
-                      as: "member",
-                      cond: { $ne: ["$$member", userObjectId] },
-                    },
+                  targetUser: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$memberUsers",
+                          as: "u",
+                          cond: { $ne: ["$$u._id", userObjectId] },
+                        },
+                      },
+                      0,
+                    ],
                   },
                 },
-                in: { $arrayElemAt: ["$$filtered", 0] },
+                in: {
+                  _id: "$$targetUser._id",
+                  email: "$$targetUser.email",
+                  role: "$$targetUser.role",
+                  profile: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$profiles",
+                          as: "p",
+                          cond: { $eq: ["$$p.user", "$$targetUser._id"] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
               },
             },
             null,
           ],
         },
+        class_details: { $arrayElemAt: ["$class_details", 0] },
       },
     },
+
     {
-      $lookup: {
-        from: "users",
-        localField: "otherUserId",
-        foreignField: "_id",
-        as: "otherUserInfo",
+      $project: {
+        members: 0,
+        memberUsers: 0,
+        profiles: 0,
       },
     },
-    {
-      $lookup: {
-        from: "userprofiles",
-        localField: "otherUserId",
-        foreignField: "user",
-        as: "otherUserProfile",
-      },
-    },
-    // Populate class info for group chats
-    {
-      $lookup: {
-        from: "teachersclasses",
-        localField: "class",
-        foreignField: "_id",
-        as: "classInfo",
-      },
-    },
-    {
-      $addFields: {
-        otherUser: {
-          $cond: [
-            { $eq: ["$type", "individual"] },
-            {
-              _id: { $arrayElemAt: ["$otherUserInfo._id", 0] },
-              email: { $arrayElemAt: ["$otherUserInfo.email", 0] },
-              role: { $arrayElemAt: ["$otherUserInfo.role", 0] },
-              full_name: { $arrayElemAt: ["$otherUserProfile.full_name", 0] },
-              image: { $arrayElemAt: ["$otherUserProfile.image", 0] },
-            },
-            null,
-          ],
-        },
-        classInfo: { $arrayElemAt: ["$classInfo", 0] },
-      },
-    },
-    { $sort: { "lastMessage.createdAt": -1 } },
   ]);
 
   return chats;
 };
+
 export const ChatRoomService = {
   get_user_chat_list,
 };

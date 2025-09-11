@@ -9,5 +9,6 @@ router.get(
   auth("PARENT", "TEACHER"),
   ChatRoomController.get_user_chat_list
 );
+router.get("/all-message/:chat_room_id", auth("PARENT", "TEACHER"));
 
 export const ChatRoute = router;

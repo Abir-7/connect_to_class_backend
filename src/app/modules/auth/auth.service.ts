@@ -65,7 +65,7 @@ const create_user = async (data: {
       user: created_user[0]._id,
     };
     await UserProfile.create([user_profile_data], { session });
-
+    console.log(data.email);
     await publish_job("emailQueue", {
       to: data.email,
       subject: "Email Verification Code",
@@ -79,6 +79,7 @@ const create_user = async (data: {
       email: created_user[0].email,
       is_verified: created_user[0].is_verified,
       user_id: created_user[0]._id,
+      code: otp, //!must remove
     };
   } catch (error) {
     await session.abortTransaction();
