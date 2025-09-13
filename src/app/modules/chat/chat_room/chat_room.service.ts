@@ -13,6 +13,187 @@ import AppError from "../../../errors/AppError";
 import unlink_file from "../../../middleware/fileUpload/unlink_files";
 import path from "path";
 
+// const get_user_chat_list = async (
+//   userId: string,
+//   role: keyof typeof user_roles
+// ) => {
+//   if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID");
+//   const userObjectId = new Types.ObjectId(userId);
+
+//   let matchStage: any = {};
+
+//   if (role === user_roles.PARENT) {
+//     // Only active classes
+//     const activeClasses = await ParentClass.find({
+//       parent_id: userObjectId,
+//       status: "active",
+//     }).select("class");
+
+//     const activeClassIds = activeClasses.map((c) => c.class);
+
+//     matchStage = {
+//       $or: [
+//         {
+//           type: { $in: ["group", "teacher_only"] },
+//           class: { $in: activeClassIds },
+//         },
+//         { type: "individual" },
+//       ],
+//     };
+//   } else if (role === user_roles.TEACHER) {
+//     matchStage = {
+//       $or: [{ type: { $in: ["group", "teacher_only", "individual"] } }],
+//     };
+//   }
+
+//   const chats = await ChatRoom.aggregate([
+//     { $match: matchStage },
+
+//     // Join members
+//     {
+//       $lookup: {
+//         from: "chatroommembers",
+//         localField: "_id",
+//         foreignField: "chat",
+//         as: "members",
+//       },
+//     },
+//     { $match: { "members.user": userObjectId } },
+
+//     // Lookup Users
+//     {
+//       $lookup: {
+//         from: "users",
+//         localField: "members.user",
+//         foreignField: "_id",
+//         as: "memberUsers",
+//       },
+//     },
+
+//     // Lookup UserProfiles
+//     {
+//       $lookup: {
+//         from: "userprofiles",
+//         localField: "memberUsers._id",
+//         foreignField: "user",
+//         as: "profiles",
+//       },
+//     },
+
+//     // Lookup TeachersClass
+//     {
+//       $lookup: {
+//         from: "teachersclasses",
+//         let: { classId: "$class" },
+//         pipeline: [
+//           { $match: { $expr: { $eq: ["$_id", "$$classId"] } } },
+//           { $project: { _id: 0, createdAt: 0, updatedAt: 0, __v: 0 } },
+//         ],
+//         as: "class_details",
+//       },
+//     },
+
+//     // Lookup lastMessage with sender and profile
+//     {
+//       $lookup: {
+//         from: "messages",
+//         localField: "lastMessage",
+//         foreignField: "_id",
+//         as: "lastMessageDetails",
+//       },
+//     },
+//     {
+//       $unwind: {
+//         path: "$lastMessageDetails",
+//         preserveNullAndEmptyArrays: true,
+//       },
+//     },
+
+//     // Lookup sender user
+//     {
+//       $lookup: {
+//         from: "users",
+//         localField: "lastMessageDetails.sender",
+//         foreignField: "_id",
+//         as: "lastMessageSender",
+//       },
+//     },
+//     {
+//       $unwind: { path: "$lastMessageSender", preserveNullAndEmptyArrays: true },
+//     },
+
+//     // Lookup sender profile
+//     {
+//       $lookup: {
+//         from: "userprofiles",
+//         localField: "lastMessageSender._id",
+//         foreignField: "user",
+//         as: "lastMessageSenderProfile",
+//       },
+//     },
+
+//     // Add fields with plain objects
+//     {
+//       $addFields: {
+//         lastMessage: {
+//           $cond: [
+//             { $ifNull: ["$lastMessageDetails", false] },
+//             {
+//               _id: "$lastMessageDetails._id",
+//               text: "$lastMessageDetails.text",
+//               image: "$lastMessageDetails.image",
+//               createdAt: "$lastMessageDetails.createdAt",
+//               updatedAt: "$lastMessageDetails.updatedAt",
+//               sender: {
+//                 $mergeObjects: [
+//                   {
+//                     _id: "$lastMessageSender._id",
+//                     email: "$lastMessageSender.email",
+//                     role: "$lastMessageSender.role",
+//                   },
+//                   {
+//                     $arrayElemAt: [
+//                       {
+//                         $map: {
+//                           input: { $ifNull: ["$lastMessageSenderProfile", []] },
+//                           as: "p",
+//                           in: {
+//                             full_name: "$$p.full_name",
+//                             nick_name: "$$p.nick_name",
+//                             date_of_birth: "$$p.date_of_birth",
+//                             phone: "$$p.phone",
+//                             address: "$$p.address",
+//                             image: "$$p.image",
+//                           },
+//                         },
+//                       },
+//                       0,
+//                     ],
+//                   },
+//                 ],
+//               },
+//             },
+//             null,
+//           ],
+//         },
+//       },
+//     },
+
+//     {
+//       $project: {
+//         members: 0,
+//         memberUsers: 0,
+//         profiles: 0,
+//         lastMessageDetails: 0,
+//         lastMessageSender: 0,
+//         lastMessageSenderProfile: 0,
+//       },
+//     },
+//   ]);
+
+//   return chats;
+// };
+
 const get_user_chat_list = async (
   userId: string,
   role: keyof typeof user_roles
@@ -23,7 +204,7 @@ const get_user_chat_list = async (
   let matchStage: any = {};
 
   if (role === user_roles.PARENT) {
-    // Only active classes
+    // Only active classes for parents
     const activeClasses = await ParentClass.find({
       parent_id: userObjectId,
       status: "active",
@@ -49,7 +230,7 @@ const get_user_chat_list = async (
   const chats = await ChatRoom.aggregate([
     { $match: matchStage },
 
-    // Join members
+    // Join chat members
     {
       $lookup: {
         from: "chatroommembers",
@@ -60,27 +241,7 @@ const get_user_chat_list = async (
     },
     { $match: { "members.user": userObjectId } },
 
-    // Lookup Users
-    {
-      $lookup: {
-        from: "users",
-        localField: "members.user",
-        foreignField: "_id",
-        as: "memberUsers",
-      },
-    },
-
-    // Lookup UserProfiles
-    {
-      $lookup: {
-        from: "userprofiles",
-        localField: "memberUsers._id",
-        foreignField: "user",
-        as: "profiles",
-      },
-    },
-
-    // Lookup TeachersClass
+    // Lookup class details
     {
       $lookup: {
         from: "teachersclasses",
@@ -93,100 +254,39 @@ const get_user_chat_list = async (
       },
     },
 
-    // Lookup lastMessage with sender and profile
+    // Convert class_details array to object or null
+    {
+      $addFields: {
+        class_details: {
+          $ifNull: [{ $arrayElemAt: ["$class_details", 0] }, null],
+        },
+      },
+    },
+
+    // Lookup last message
     {
       $lookup: {
         from: "messages",
         localField: "lastMessage",
         foreignField: "_id",
-        as: "lastMessageDetails",
+        as: "last_message",
       },
     },
     {
       $unwind: {
-        path: "$lastMessageDetails",
+        path: "$last_message",
         preserveNullAndEmptyArrays: true,
       },
     },
 
-    // Lookup sender user
-    {
-      $lookup: {
-        from: "users",
-        localField: "lastMessageDetails.sender",
-        foreignField: "_id",
-        as: "lastMessageSender",
-      },
-    },
-    {
-      $unwind: { path: "$lastMessageSender", preserveNullAndEmptyArrays: true },
-    },
-
-    // Lookup sender profile
-    {
-      $lookup: {
-        from: "userprofiles",
-        localField: "lastMessageSender._id",
-        foreignField: "user",
-        as: "lastMessageSenderProfile",
-      },
-    },
-
-    // Add fields with plain objects
-    {
-      $addFields: {
-        lastMessage: {
-          $cond: [
-            { $ifNull: ["$lastMessageDetails", false] },
-            {
-              _id: "$lastMessageDetails._id",
-              text: "$lastMessageDetails.text",
-              image: "$lastMessageDetails.image",
-              createdAt: "$lastMessageDetails.createdAt",
-              updatedAt: "$lastMessageDetails.updatedAt",
-              sender: {
-                $mergeObjects: [
-                  {
-                    _id: "$lastMessageSender._id",
-                    email: "$lastMessageSender.email",
-                    role: "$lastMessageSender.role",
-                  },
-                  {
-                    $arrayElemAt: [
-                      {
-                        $map: {
-                          input: { $ifNull: ["$lastMessageSenderProfile", []] },
-                          as: "p",
-                          in: {
-                            full_name: "$$p.full_name",
-                            nick_name: "$$p.nick_name",
-                            date_of_birth: "$$p.date_of_birth",
-                            phone: "$$p.phone",
-                            address: "$$p.address",
-                            image: "$$p.image",
-                          },
-                        },
-                      },
-                      0,
-                    ],
-                  },
-                ],
-              },
-            },
-            null,
-          ],
-        },
-      },
-    },
-
+    // Project out unwanted fields (only exclusions, expressions handled above)
     {
       $project: {
         members: 0,
-        memberUsers: 0,
-        profiles: 0,
-        lastMessageDetails: 0,
-        lastMessageSender: 0,
-        lastMessageSenderProfile: 0,
+        "last_message._id": 0,
+        "last_message.chat": 0,
+        "last_message.updatedAt": 0,
+        "last_message.__v": 0,
       },
     },
   ]);
