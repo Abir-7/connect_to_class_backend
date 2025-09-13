@@ -58,7 +58,6 @@ const get_user_chat_list = async (
         as: "members",
       },
     },
-
     { $match: { "members.user": userObjectId } },
 
     // Lookup Users
@@ -81,71 +80,102 @@ const get_user_chat_list = async (
       },
     },
 
-    // Lookup TeachersClass (strip _id, createdAt, updatedAt, __v)
+    // Lookup TeachersClass
     {
       $lookup: {
         from: "teachersclasses",
         let: { classId: "$class" },
         pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$classId"] } } },
-          {
-            $project: {
-              _id: 0,
-              createdAt: 0,
-              updatedAt: 0,
-              __v: 0,
-            },
-          },
+          { $project: { _id: 0, createdAt: 0, updatedAt: 0, __v: 0 } },
         ],
         as: "class_details",
       },
     },
 
+    // Lookup lastMessage with sender and profile
+    {
+      $lookup: {
+        from: "messages",
+        localField: "lastMessage",
+        foreignField: "_id",
+        as: "lastMessageDetails",
+      },
+    },
+    {
+      $unwind: {
+        path: "$lastMessageDetails",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+
+    // Lookup sender user
+    {
+      $lookup: {
+        from: "users",
+        localField: "lastMessageDetails.sender",
+        foreignField: "_id",
+        as: "lastMessageSender",
+      },
+    },
+    {
+      $unwind: { path: "$lastMessageSender", preserveNullAndEmptyArrays: true },
+    },
+
+    // Lookup sender profile
+    {
+      $lookup: {
+        from: "userprofiles",
+        localField: "lastMessageSender._id",
+        foreignField: "user",
+        as: "lastMessageSenderProfile",
+      },
+    },
+
+    // Add fields with plain objects
     {
       $addFields: {
-        // single user object instead of array
-        other_user: {
+        lastMessage: {
           $cond: [
-            { $eq: ["$type", "individual"] },
+            { $ifNull: ["$lastMessageDetails", false] },
             {
-              $let: {
-                vars: {
-                  targetUser: {
-                    $arrayElemAt: [
-                      {
-                        $filter: {
-                          input: "$memberUsers",
-                          as: "u",
-                          cond: { $ne: ["$$u._id", userObjectId] },
-                        },
-                      },
-                      0,
-                    ],
+              _id: "$lastMessageDetails._id",
+              text: "$lastMessageDetails.text",
+              image: "$lastMessageDetails.image",
+              createdAt: "$lastMessageDetails.createdAt",
+              updatedAt: "$lastMessageDetails.updatedAt",
+              sender: {
+                $mergeObjects: [
+                  {
+                    _id: "$lastMessageSender._id",
+                    email: "$lastMessageSender.email",
+                    role: "$lastMessageSender.role",
                   },
-                },
-                in: {
-                  _id: "$$targetUser._id",
-                  email: "$$targetUser.email",
-                  role: "$$targetUser.role",
-                  profile: {
+                  {
                     $arrayElemAt: [
                       {
-                        $filter: {
-                          input: "$profiles",
+                        $map: {
+                          input: { $ifNull: ["$lastMessageSenderProfile", []] },
                           as: "p",
-                          cond: { $eq: ["$$p.user", "$$targetUser._id"] },
+                          in: {
+                            full_name: "$$p.full_name",
+                            nick_name: "$$p.nick_name",
+                            date_of_birth: "$$p.date_of_birth",
+                            phone: "$$p.phone",
+                            address: "$$p.address",
+                            image: "$$p.image",
+                          },
                         },
                       },
                       0,
                     ],
                   },
-                },
+                ],
               },
             },
             null,
           ],
         },
-        class_details: { $arrayElemAt: ["$class_details", 0] },
       },
     },
 
@@ -154,6 +184,9 @@ const get_user_chat_list = async (
         members: 0,
         memberUsers: 0,
         profiles: 0,
+        lastMessageDetails: 0,
+        lastMessageSender: 0,
+        lastMessageSenderProfile: 0,
       },
     },
   ]);
@@ -232,6 +265,12 @@ const send_image = async (
   user_id: string
 ) => {
   try {
+    const chat_data = await ChatRoom.findById(chat);
+
+    if (!chat_data) {
+      throw new AppError(404, "Chat data not found");
+    }
+
     // Upload all images to Cloudinary
     const uploadedImages = await Promise.all(
       images.map(async (filePath) => {
@@ -244,7 +283,7 @@ const send_image = async (
 
     // Save message to DB (uncomment if needed)
 
-    const savedMessage = await Message.create({
+    const saved_message = await Message.create({
       chat,
       text: message || "",
       image: uploadedImages, // store uploaded URLs
@@ -255,7 +294,9 @@ const send_image = async (
       images.map((link) => unlink_file(link));
     }
 
-    return savedMessage.toObject();
+    chat_data.lastMessage = saved_message._id;
+    await chat_data.save();
+    return saved_message.toObject();
 
     //return uploadedImages; // return array of uploaded URLs
   } catch (error) {

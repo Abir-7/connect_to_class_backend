@@ -7,6 +7,7 @@ import logger from "./app/utils/serverTools/logger";
 
 import { start_consumers } from "./app/lib/rabbitMq/worker";
 import seed_admin from "./app/DB";
+import { initSocket } from "./app/lib/socket/socket";
 
 process.on("uncaughtException", (err) => {
   logger.error("Uncaught exception:", err);
@@ -23,7 +24,7 @@ const main = async () => {
   await mongoose.connect(app_config.database.uri as string, {});
   logger.info("MongoDB connected");
   await seed_admin();
-
+  await initSocket(server);
   start_consumers();
   // Wait up to 15 minutes for request to finish uploading //
   server.setTimeout(15 * 60 * 1000);
