@@ -26,7 +26,7 @@ export async function send_email(email: string, subject: string, text: string) {
       to: email, // Recipient's email
       subject: `${subject}`,
       text: text,
-      html: `
+      html: /* html */ `
         <!DOCTYPE html>
         <html lang="en">
         <head>

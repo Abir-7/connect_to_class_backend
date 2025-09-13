@@ -6,7 +6,7 @@ const messageSchema = new Schema<IMessage>(
     chat: { type: Schema.Types.ObjectId, ref: "ChatRoom", required: true },
     sender: { type: Schema.Types.ObjectId, ref: "User", required: true },
     text: { type: String },
-    image: { type: String },
+    image: [{ type: String }],
   },
   { timestamps: true }
 );

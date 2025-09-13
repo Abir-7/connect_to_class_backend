@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import mongoose, { Types } from "mongoose";
@@ -7,6 +8,10 @@ import { user_roles } from "../../../interface/auth.interface";
 import ChatRoom from "./chat_room.model";
 import { ParentClass } from "../../teachers_class/relational_schema/parent_class.interface.model";
 import { Message } from "../message/message.model";
+import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/cloudinaryUpload";
+import AppError from "../../../errors/AppError";
+import unlink_file from "../../../middleware/fileUpload/unlink_files";
+import path from "path";
 
 const get_user_chat_list = async (
   userId: string,
@@ -220,7 +225,48 @@ const get_message_data = async (chatId: string, page = 1, limit = 50) => {
   return { messages, meta };
 };
 
+const send_image = async (
+  images: string[],
+  message: string,
+  chat: string,
+  user_id: string
+) => {
+  try {
+    // Upload all images to Cloudinary
+    const uploadedImages = await Promise.all(
+      images.map(async (filePath) => {
+        // Resolve absolute path
+        const absolutePath = path.join(process.cwd(), "uploads", filePath);
+
+        const result = await uploadFileToCloudinary(absolutePath, "images");
+        return result.url;
+      })
+    );
+
+    // Save message to DB (uncomment if needed)
+
+    const savedMessage = await Message.create({
+      chat,
+      text: message || "",
+      image: uploadedImages, // store uploaded URLs
+      sender: user_id,
+    });
+
+    if (uploadedImages.length > 0) {
+      images.map((link) => unlink_file(link));
+    }
+
+    return savedMessage.toObject();
+
+    //return uploadedImages; // return array of uploaded URLs
+  } catch (error) {
+    images.map((link) => unlink_file(link));
+    throw new AppError(500, "Failed to upload images");
+  }
+};
+
 export const ChatRoomService = {
   get_user_chat_list,
   get_message_data,
+  send_image,
 };

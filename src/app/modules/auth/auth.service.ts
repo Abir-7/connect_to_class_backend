@@ -66,7 +66,7 @@ const create_user = async (data: {
     };
     await UserProfile.create([user_profile_data], { session });
     console.log(data.email);
-    await publish_job("emailQueue", {
+    await publish_job("email_queue", {
       to: data.email,
       subject: "Email Verification Code",
       body: otp.toString(),
