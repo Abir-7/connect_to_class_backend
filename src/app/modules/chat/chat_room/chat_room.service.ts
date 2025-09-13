@@ -236,9 +236,8 @@ const send_image = async (
     const uploadedImages = await Promise.all(
       images.map(async (filePath) => {
         // Resolve absolute path
-        const absolutePath = path.join(process.cwd(), "uploads", filePath);
 
-        const result = await uploadFileToCloudinary(absolutePath, "images");
+        const result = await uploadFileToCloudinary(filePath, "images");
         return result.url;
       })
     );

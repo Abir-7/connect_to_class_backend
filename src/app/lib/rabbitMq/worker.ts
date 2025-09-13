@@ -6,11 +6,14 @@ import { consume_queue } from "./consumer";
 export const start_consumers = () => {
   consume_queue("email_queue", async (job) => {
     const { to, subject, body } = job;
+
     try {
-      logger.info(`Processing job: ${to}, ${subject}`);
+      logger.info(`Processing email job: ${to}, ${subject}`);
       await send_email(to, subject, body); // Call your email function
+      logger.info(`Email sent to ${to}`);
     } catch (error) {
-      logger.error("Error processing the job:", error);
+      logger.error("Error processing email job:", error);
+      throw error; // let nack handle retry/discard
     }
   });
 };

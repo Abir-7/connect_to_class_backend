@@ -11,5 +11,5 @@ export const publish_job = async (queue_name: string, payload: object) => {
     persistent: true,
   });
 
-  logger.info(`Job published to ${queue_name}`);
+  logger.info(`📤 Job published to ${queue_name}`);
 };

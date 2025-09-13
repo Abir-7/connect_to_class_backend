@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import path from "path";
 import AppError from "../../../errors/AppError";
 import unlink_file from "../unlink_files";
 import cloudinary from "./cloudinary";
@@ -8,7 +9,8 @@ export const uploadFileToCloudinary = async (
   folder: string
 ): Promise<{ url: string; public_id: string }> => {
   try {
-    const result = await cloudinary.uploader.upload(filePath, { folder });
+    const absolutePath = path.join(process.cwd(), "uploads", filePath);
+    const result = await cloudinary.uploader.upload(absolutePath, { folder });
     unlink_file(filePath);
 
     if (!result.secure_url || !result.public_id) {

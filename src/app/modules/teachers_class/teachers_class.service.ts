@@ -3,7 +3,7 @@ import { KidsClass } from "./relational_schema/kids_class.interface.model";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import {
   delete_cache,
   delete_caches,
@@ -72,11 +72,38 @@ const get_my_class = async (user_id: string) => {
   const cachedData = await get_cache<any[]>(cache_key);
   if (cachedData) return cachedData;
 
-  const class_list = await TeachersClass.find({ teacher: user_id }).lean();
+  const result = await TeachersClass.aggregate([
+    { $match: { teacher: new Types.ObjectId(user_id) } }, // Only this teacher's classes
+    {
+      $lookup: {
+        from: "kidsclasses", // collection name of KidsClass
+        localField: "_id",
+        foreignField: "class",
+        as: "kids",
+      },
+    },
+    {
+      $addFields: {
+        total_students: {
+          $size: {
+            $filter: {
+              input: "$kids",
+              as: "kid",
+              cond: { $eq: ["$$kid.status", "active"] }, // count only active
+            },
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        kids: 0, // hide the kids array
+      },
+    },
+  ]);
 
-  await set_cache(cache_key, class_list, 3600);
-
-  return class_list;
+  await set_cache(cache_key, result, 3600);
+  return result;
 };
 
 interface IUserSearchResult {
@@ -447,7 +474,7 @@ const add_kids_to_class = async (
         `class:${classId}:parents`,
       ])
     );
-
+    delete_cache(`teacher_classes:${teacher_id}`);
     const parentClass = await ParentClass.findOne({
       parent_id: data.parent_id,
       class: data.class_id,
@@ -469,7 +496,7 @@ const get_kids_parent_list_of_a_class = async (
 ) => {
   const cacheKey = `class:${class_id}:${filter}`;
 
-  //1️⃣ Try cache
+  // 1️⃣ Try cache
   const cached = await get_cache<any[]>(cacheKey);
   if (cached) return cached;
 
@@ -508,6 +535,8 @@ const get_kids_parent_list_of_a_class = async (
   } else if (filter === "parents") {
     result = await ParentClass.aggregate([
       { $match: { class: classObjectId, status: "active" } },
+
+      // ✅ Join with user table
       {
         $lookup: {
           from: "users",
@@ -517,6 +546,8 @@ const get_kids_parent_list_of_a_class = async (
         },
       },
       { $unwind: "$parent" },
+
+      // ✅ Join with user profile table
       {
         $lookup: {
           from: "userprofiles",
@@ -526,6 +557,39 @@ const get_kids_parent_list_of_a_class = async (
         },
       },
       { $unwind: { path: "$parentProfile", preserveNullAndEmptyArrays: true } },
+
+      // ✅ Lookup kids of this parent that are also in the same class
+      {
+        $lookup: {
+          from: "kidsclasses", // 👈 collection name of KidsClass
+          let: { parentId: "$parent_id", classId: "$class" },
+          pipeline: [
+            {
+              $lookup: {
+                from: "kids",
+                localField: "kids_id",
+                foreignField: "_id",
+                as: "kid",
+              },
+            },
+            { $unwind: "$kid" },
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$class", "$$classId"] }, // same class
+                    { $eq: ["$kid.parent", "$$parentId"] }, // kid belongs to this parent
+                    { $eq: ["$status", "active"] }, // only active kids
+                  ],
+                },
+              },
+            },
+          ],
+          as: "kidsInSameClass",
+        },
+      },
+
+      // ✅ Project the final shape
       {
         $project: {
           _id: 1,
@@ -539,6 +603,7 @@ const get_kids_parent_list_of_a_class = async (
             image: "$parentProfile.image",
             type: filter,
           },
+          total_kids: { $size: "$kidsInSameClass" }, // 👈 count kids in this class
         },
       },
     ]);

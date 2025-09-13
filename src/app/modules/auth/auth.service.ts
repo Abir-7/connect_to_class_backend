@@ -241,7 +241,7 @@ const forgot_password_request = async (
     token: null,
   };
 
-  await publish_job("emailQueue", {
+  await publish_job("email_queue", {
     to: email,
     subject: "Reset Password Verification Code",
     body: otp.toString(),
@@ -419,7 +419,7 @@ const re_send_otp = async (user_id: string): Promise<{ message: string }> => {
   await user_data.save();
 
   // Step 5: Send email async job
-  await publish_job("emailQueue", {
+  await publish_job("email_queue", {
     to: user_data.email,
     subject: "Verification Code",
     body: otp.toString(),
