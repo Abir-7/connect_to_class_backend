@@ -6,7 +6,7 @@ export type ChatType = (typeof chatTypes)[number];
 export interface IChatRoom extends Document {
   class?: Types.ObjectId;
   type: ChatType;
-  lastMessage?: Types.ObjectId;
+  last_message?: Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 }

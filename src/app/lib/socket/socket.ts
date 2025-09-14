@@ -1,55 +1,96 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-// socket.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server as HttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import logger from "../../utils/serverTools/logger";
+import { json_web_token } from "../../utils/jwt/jwt";
+import { MessageData, SendMessagePayload } from "./data.interface";
+import { saveMessage } from "../../modules/chat/chat_room/chat_room.service";
 
 interface User {
-  userId: string; // some unique user identifier from your auth system
-  socketId: string; // socket connection ID
+  user_id: string;
+  socket_id: string;
 }
 
 const connectedUsers = new Map<string, User>();
-
 let io: SocketIOServer | null = null;
 
-export const initSocket = async (httpServer: HttpServer) => {
+export const initSocket = (httpServer: HttpServer) => {
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: "*", // Customize this for security in prod
+      origin: "*", // Restrict in production
       methods: ["GET", "POST"],
     },
   });
 
-  io.on("connection", (socket) => {
-    logger.info(`New client connected: ${socket.id}`);
+  // Middleware for JWT verification
+  io.use((socket, next) => {
+    console.log(socket.handshake);
 
-    socket.on("register", (userData: { userId: string }) => {
-      if (connectedUsers.has(userData.userId)) {
-        // User is already connected, update their socketId to new one
-        const existingUser = connectedUsers.get(userData.userId)!;
-        logger.info(
-          `User ${userData.userId} already connected. Updating socket from ${existingUser.socketId} to ${socket.id}`
-        );
-        // Update to new socketId
-        connectedUsers.set(userData.userId, {
-          userId: userData.userId,
-          socketId: socket.id,
-        });
-      } else {
-        // New user, add to map
-        connectedUsers.set(userData.userId, {
-          userId: userData.userId,
-          socketId: socket.id,
-        });
-        logger.info(
-          `User registered: ${userData.userId} with socket ${socket.id}`
-        );
-      }
+    let token =
+      socket.handshake.auth?.token ||
+      (socket.handshake.headers["authorization"] as string | undefined);
+
+    if (!token) {
+      logger.warn(`Socket ${socket.id} tried to connect without token`);
+      return next(new Error("Authentication error"));
+    }
+
+    if (token.startsWith("Bearer ")) {
+      token = token.split(" ")[1];
+    }
+
+    try {
+      const payload = json_web_token.decode_jwt_token(token) as any;
+      if (!payload?.user_id) throw new Error("Invalid token payload");
+
+      (socket as any).user_id = payload.user_id;
+      next();
+    } catch (err) {
+      logger.warn(`Socket ${socket.id} failed auth: ${err}`);
+      next(new Error("Authentication error"));
+    }
+  });
+
+  io.on("connection", (socket) => {
+    const user_id = (socket as any).user_id;
+
+    connectedUsers.set(user_id, { user_id, socket_id: socket.id });
+    logger.info(`User ${user_id} connected with socket ${socket.id}`);
+
+    socket.on("send-message", async (data: SendMessagePayload) => {
+      const { chat_id, message_data } = data;
+      const withDate: MessageData = {
+        ...message_data,
+        createdAt: new Date().toISOString(),
+        image: Array.isArray(message_data?.image) ? message_data?.image : [],
+      };
+
+      console.log(withDate, chat_id);
+      io?.emit("receive-message", data);
+
+      await saveMessage({
+        chat: chat_id,
+        sender: withDate.sender._id,
+        text: withDate.text,
+        images: withDate.image.length > 0 ? withDate.image : [],
+      });
     });
 
+    /* Example:    {
+  "chat_id": "68c2a40fc5af026df719edbd",
+  "message_data": {
+    "sender": {
+      "_id": "68b8053f96b1d726cdcdff46",
+      "full_name": "John Doe",
+      "image": "https://example.com/avatar.jpg"
+    },
+    "text": "Hello, this is a test message!"
+  }
+}   */
     socket.on("disconnect", () => {
-      logger.info(`Client disconnected: ${socket.id}`);
+      connectedUsers.delete(user_id);
+      logger.info(`User ${user_id} disconnected from socket ${socket.id}`);
     });
   });
 
@@ -57,8 +98,8 @@ export const initSocket = async (httpServer: HttpServer) => {
 };
 
 export const getSocket = () => {
-  if (!io) {
-    throw new Error("Socket.io not initialized!");
-  }
+  if (!io) throw new Error("Socket.io not initialized!");
   return io;
 };
+
+export const getConnectedUsers = () => connectedUsers;

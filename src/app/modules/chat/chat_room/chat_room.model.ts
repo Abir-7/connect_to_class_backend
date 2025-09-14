@@ -10,7 +10,7 @@ const chatRoomSchema = new Schema<IChatRoom>(
       default: null,
     },
     type: { type: String, enum: chatTypes, required: true },
-    lastMessage: {
+    last_message: {
       type: Schema.Types.ObjectId,
       ref: "Message",
       required: false,
