@@ -7,6 +7,7 @@ import unlink_file from "../../../middleware/fileUpload/unlink_files";
 import { UserProfile } from "./user_profile.model";
 import { IUserProfile } from "./user_profile.interface";
 import { remove_falsy_fields } from "../../../utils/helper/remove_falsy_field";
+import { delete_cache } from "../../../lib/redis/cache";
 
 const update_profile_image = async (path: string, email: string) => {
   const user = await User.findOne({ email: email });
@@ -78,6 +79,8 @@ const update_profile = async (
   if (!updated) {
     throw new AppError(status.BAD_REQUEST, "Failed to update user info.");
   }
+
+  delete_cache(`user_profile:${user_id}`).catch(() => {});
   return updated;
 };
 

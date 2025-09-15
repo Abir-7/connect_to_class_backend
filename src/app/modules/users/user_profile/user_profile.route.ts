@@ -11,20 +11,20 @@ const router = Router();
 
 router.patch(
   "/update-profile-image",
-  auth("ADMIN", "PARENT"),
+  auth("ADMIN", "PARENT", "TEACHER"),
   upload.single("image"),
   UserProfileController.update_profile_image
 );
 
 router.patch(
   "/update-profile-data",
-  auth("ADMIN", "PARENT"),
+  auth("ADMIN", "PARENT", "TEACHER"),
   zod_validator(zod_update_profile_schema),
   UserProfileController.update_profile_data
 );
 router.patch(
   "/update-profile",
-  auth("ADMIN", "PARENT"),
+  auth("ADMIN", "PARENT", "TEACHER"),
   upload.single("image"),
   parse_data_field("data"),
   zod_validator(zod_update_profile_schema),

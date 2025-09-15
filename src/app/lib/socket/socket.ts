@@ -1,15 +1,15 @@
-/* eslint-disable quotes */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server as HttpServer } from "http";
+import { Server as SocketIOServer } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 
 import logger from "../../utils/serverTools/logger";
 import { json_web_token } from "../../utils/jwt/jwt";
-import { MessageData, SendMessagePayload } from "./data.interface";
 import { saveMessage } from "../../helperFunction/with_db_query/save_message_mark_read";
-
-import { Server as SocketIOServer } from "socket.io";
 import { markChatAsRead } from "../../helperFunction/with_db_query/mark_message_as_read";
+import { MessageData, SendMessagePayload } from "./data.interface";
+import redis from "../redis/redis";
 
 interface User {
   user_id: string;
@@ -19,32 +19,26 @@ interface User {
 const connectedUsers = new Map<string, User>();
 let io: SocketIOServer | null = null;
 
-export const initSocket = (httpServer: HttpServer) => {
+export const initSocket = async (httpServer: HttpServer) => {
   io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: "*", // Restrict in production
-      methods: ["GET", "POST"],
-    },
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    maxHttpBufferSize: 1e6, // 1MB per message
   });
 
-  // Middleware for JWT verification
+  // ------------------- Redis Adapter -------------------
+  const pubClient = redis;
+  const subClient = pubClient.duplicate();
+  io.adapter(createAdapter(pubClient, subClient));
+
+  // ------------------- JWT Auth -------------------
   io.use((socket, next) => {
-    console.log(socket.handshake);
-
-    let token =
-      socket.handshake.auth?.token ||
-      (socket.handshake.headers["authorization"] as string | undefined);
-
-    if (!token) {
-      logger.warn(`Socket ${socket.id} tried to connect without token`);
-      return next(new Error("Authentication error"));
-    }
-
-    if (token.startsWith("Bearer ")) {
-      token = token.split(" ")[1];
-    }
-
     try {
+      let token =
+        socket.handshake.auth?.token ||
+        (socket.handshake.headers["authorization"] as string | undefined);
+      if (!token) throw new Error("Missing token");
+      if (token.startsWith("Bearer ")) token = token.split(" ")[1];
+
       const payload = json_web_token.decode_jwt_token(token) as any;
       if (!payload?.user_id) throw new Error("Invalid token payload");
 
@@ -56,49 +50,41 @@ export const initSocket = (httpServer: HttpServer) => {
     }
   });
 
+  // ------------------- Connection -------------------
   io.on("connection", (socket) => {
     const user_id = (socket as any).user_id;
-
     connectedUsers.set(user_id, { user_id, socket_id: socket.id });
     logger.info(`User ${user_id} connected with socket ${socket.id}`);
 
-    //--------------------------- CHAT Part -------------------------
-
-    socket.on("send-message", async (data: SendMessagePayload) => {
+    // ------------------- Send Message -------------------
+    socket.on("send-message", (data: SendMessagePayload) => {
       const { chat_id, message_data } = data;
       const withDate: MessageData = {
         ...message_data,
         createdAt: new Date().toISOString(),
-        image: Array.isArray(message_data?.image) ? message_data?.image : [],
+        image: Array.isArray(message_data?.image) ? message_data.image : [],
       };
 
-      //io?.emit(`receive-message`, data);
-      io?.emit(`receive-message-${chat_id}`, data);
-      //fire and forgot
+      // Emit via Redis adapter across instances
+      io?.emit(`receive-message-${chat_id}`, withDate);
+
+      // Fire-and-forget DB save
       saveMessage({
         chat: chat_id,
         sender: withDate.sender._id,
         text: withDate.text,
-        images: withDate.image.length > 0 ? withDate.image : [],
-      });
+        images: withDate.image,
+      }).catch((err) =>
+        logger.error(`Failed to save message in chat ${chat_id}: ${err}`)
+      );
     });
 
-    socket.on("message-read", async ({ chatId, userId }) => {
+    // ------------------- Message Read -------------------
+    socket.on("message-read", ({ chatId, userId }) => {
       markChatAsRead(chatId, userId);
     });
 
-    //---------------------------------------------------------------------------
-    /* Example:    {
-  "chat_id": "68c2a40fc5af026df719edbd",
-  "message_data": {
-    "sender": {
-      "_id": "68b8053f96b1d726cdcdff46",
-      "full_name": "John Doe",
-      "image": "https://example.com/avatar.jpg"
-    },
-    "text": "Hello, this is a test message!"
-  }
-}   */
+    // ------------------- Disconnect -------------------
     socket.on("disconnect", () => {
       connectedUsers.delete(user_id);
       logger.info(`User ${user_id} disconnected from socket ${socket.id}`);
