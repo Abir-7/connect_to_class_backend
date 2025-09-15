@@ -35,17 +35,12 @@ const send_image = catch_async(async (req, res) => {
   const filePaths = Array.isArray(files)
     ? files.map((file: { path: any }) => get_relative_path(file.path))
     : [];
-  const result = await ChatRoomService.send_image(
-    filePaths,
-    req.body.message,
-    req.params.chat_id,
-    req.user.user_id
-  );
+  const result = await ChatRoomService.send_image(filePaths);
 
   send_response(res, {
     success: true,
     status_code: status.OK,
-    message: "Chat list fetched succesfully",
+    message: "Image link created.",
     data: result,
   });
 });

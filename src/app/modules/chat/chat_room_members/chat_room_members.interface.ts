@@ -7,6 +7,7 @@ export interface IChatRoomMember extends Document {
   chat: Types.ObjectId;
   user: Types.ObjectId;
   type: ChatMemberType;
+  last_read_at: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }

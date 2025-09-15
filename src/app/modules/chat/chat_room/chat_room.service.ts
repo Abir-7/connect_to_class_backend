@@ -23,7 +23,6 @@ const get_user_chat_list = async (
   let matchStage: any = {};
 
   if (role === user_roles.PARENT) {
-    // Only active classes for parents
     const activeClasses = await ParentClass.find({
       parent_id: userObjectId,
       status: "active",
@@ -53,12 +52,23 @@ const get_user_chat_list = async (
     {
       $lookup: {
         from: "chatroommembers",
-        localField: "_id",
-        foreignField: "chat",
-        as: "members",
+        let: { chatId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$chat", "$$chatId"] },
+                  { $eq: ["$user", userObjectId] },
+                ],
+              },
+            },
+          },
+        ],
+        as: "member_info",
       },
     },
-    { $match: { "members.user": userObjectId } },
+    { $match: { "member_info.0": { $exists: true } } },
 
     // Lookup class details
     {
@@ -72,8 +82,6 @@ const get_user_chat_list = async (
         as: "class_details",
       },
     },
-
-    // Convert class_details array to object or null
     {
       $addFields: {
         class_details: {
@@ -82,27 +90,18 @@ const get_user_chat_list = async (
       },
     },
 
-    // Lookup last message (only needed fields)
+    // Lookup last message
     {
       $lookup: {
         from: "messages",
         let: { lastMsgId: "$last_message" },
         pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$lastMsgId"] } } },
-          {
-            $project: {
-              _id: 0,
-              chat: 0,
-              updatedAt: 0,
-              __v: 0,
-            },
-          },
+          { $project: { _id: 0, chat: 0, updatedAt: 0, __v: 0 } },
         ],
         as: "last_message",
       },
     },
-
-    // Flatten last_message array → object or null
     {
       $addFields: {
         last_message: {
@@ -111,12 +110,45 @@ const get_user_chat_list = async (
       },
     },
 
-    // Clean up fields
+    // 🔹 Count unread messages
     {
-      $project: {
-        members: 0,
+      $lookup: {
+        from: "messages",
+        let: {
+          chatId: "$_id",
+          lastRead: { $arrayElemAt: ["$member_info.last_read_at", 0] },
+        },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$chat", "$$chatId"] },
+                  {
+                    $gt: [
+                      "$createdAt",
+                      { $ifNull: ["$$lastRead", new Date(0)] },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          { $count: "unread_count" },
+        ],
+        as: "unread",
       },
     },
+    {
+      $addFields: {
+        total_unread: {
+          $ifNull: [{ $arrayElemAt: ["$unread.unread_count", 0] }, 0],
+        },
+      },
+    },
+
+    // Clean up fields
+    { $project: { members: 0, member_info: 0, unread: 0 } },
   ]);
 
   return chats;
@@ -186,12 +218,7 @@ const get_message_data = async (chatId: string, page = 1, limit = 50) => {
   return { messages, meta };
 };
 
-export const send_image = async (
-  images: string[],
-  message: string,
-  chat: string,
-  user_id: string
-) => {
+export const send_image = async (images: string[]) => {
   try {
     let uploadedImages: string[] = [];
 
@@ -205,20 +232,11 @@ export const send_image = async (
       );
     }
 
-    // Save message using helper
-    const saved_message = await saveMessage({
-      chat,
-      sender: user_id,
-      text: message,
-      images: uploadedImages, // [] if no images
-    });
-
-    // Cleanup local temp files
     if (images?.length > 0) {
       images.map((link) => unlink_file(link));
     }
 
-    return saved_message;
+    return uploadedImages;
   } catch (error) {
     if (images?.length > 0) {
       images.map((link) => unlink_file(link));
@@ -236,38 +254,3 @@ export const ChatRoomService = {
 /**
  * Save a message in DB and update chat last_message
  */
-export const saveMessage = async ({
-  chat,
-  sender,
-  text = "",
-  images = [],
-}: {
-  chat: string;
-  sender: string;
-  text?: string;
-  images?: string[]; // optional
-}) => {
-  try {
-    const chat_data = await ChatRoom.findById(chat);
-
-    if (!chat_data) {
-      throw new AppError(404, "Chat not found");
-    }
-
-    // Create and save message
-    const saved_message = await Message.create({
-      chat,
-      sender,
-      text,
-      image: images?.length > 0 ? images : [], // default empty array
-    });
-
-    // Update last_message in chat
-    chat_data.last_message = saved_message._id;
-    await chat_data.save();
-
-    return saved_message;
-  } catch (err) {
-    throw new AppError(500, "Failed to save message");
-  }
-};

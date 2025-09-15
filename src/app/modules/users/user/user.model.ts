@@ -58,6 +58,6 @@ user_schema.methods.comparePassword = async function (
   }
 };
 
-const User = model<IUser>("USER", user_schema);
+const User = model<IUser>("User", user_schema);
 
 export default User;

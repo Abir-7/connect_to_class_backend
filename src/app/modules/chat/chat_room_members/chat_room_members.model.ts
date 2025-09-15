@@ -9,6 +9,7 @@ const chat_room_member_schema = new Schema<IChatRoomMember>(
     chat: { type: Schema.Types.ObjectId, ref: "ChatRoom", required: true },
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: { type: String, enum: chat_member_type },
+    last_read_at: { type: Date, default: null }, // 👈 last read time pointer
   },
   { timestamps: true }
 );

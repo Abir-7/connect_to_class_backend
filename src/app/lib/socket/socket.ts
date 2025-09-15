@@ -1,11 +1,15 @@
+/* eslint-disable quotes */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Server as HttpServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
+
 import logger from "../../utils/serverTools/logger";
 import { json_web_token } from "../../utils/jwt/jwt";
 import { MessageData, SendMessagePayload } from "./data.interface";
-import { saveMessage } from "../../modules/chat/chat_room/chat_room.service";
+import { saveMessage } from "../../helperFunction/with_db_query/save_message_mark_read";
+
+import { Server as SocketIOServer } from "socket.io";
+import { markChatAsRead } from "../../helperFunction/with_db_query/mark_message_as_read";
 
 interface User {
   user_id: string;
@@ -58,6 +62,8 @@ export const initSocket = (httpServer: HttpServer) => {
     connectedUsers.set(user_id, { user_id, socket_id: socket.id });
     logger.info(`User ${user_id} connected with socket ${socket.id}`);
 
+    //--------------------------- CHAT Part -------------------------
+
     socket.on("send-message", async (data: SendMessagePayload) => {
       const { chat_id, message_data } = data;
       const withDate: MessageData = {
@@ -66,10 +72,10 @@ export const initSocket = (httpServer: HttpServer) => {
         image: Array.isArray(message_data?.image) ? message_data?.image : [],
       };
 
-      console.log(withDate, chat_id);
-      io?.emit("receive-message", data);
-
-      await saveMessage({
+      //io?.emit(`receive-message`, data);
+      io?.emit(`receive-message-${chat_id}`, data);
+      //fire and forgot
+      saveMessage({
         chat: chat_id,
         sender: withDate.sender._id,
         text: withDate.text,
@@ -77,6 +83,11 @@ export const initSocket = (httpServer: HttpServer) => {
       });
     });
 
+    socket.on("message-read", async ({ chatId, userId }) => {
+      markChatAsRead(chatId, userId);
+    });
+
+    //---------------------------------------------------------------------------
     /* Example:    {
   "chat_id": "68c2a40fc5af026df719edbd",
   "message_data": {
