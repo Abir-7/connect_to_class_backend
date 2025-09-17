@@ -7,7 +7,7 @@ const TaskSchema = new Schema<ITask>(
     description: { type: String, required: true },
     assign_to: { type: Schema.Types.ObjectId, required: true, ref: "User" },
     assigned_by: { type: Schema.Types.ObjectId, required: true, ref: "User" },
-    due_date: { type: Date, required: true },
+    due_date: { type: Number, required: true },
     due_time: { type: String, required: true },
     priority: {
       type: String,

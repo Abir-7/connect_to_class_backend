@@ -12,10 +12,16 @@ const event_schema = new Schema<IEvent>(
     class: {
       type: Schema.Types.ObjectId,
       ref: "TeachersClass",
-      required: true,
+      default: null,
       index: true,
     },
     avater_id: { type: String, default: "" },
+    created_by: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
   },
   {
     timestamps: true, // adds createdAt and updatedAt

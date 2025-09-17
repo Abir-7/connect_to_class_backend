@@ -22,7 +22,7 @@ export const zod_event_schema = z.object({
         /^([0-1]\d|2[0-3]):([0-5]\d)$/,
         "End time must be in HH:mm format"
       ),
-    class: z.string().min(1, "Class ID is required"),
+    class: z.string().min(1, "Class ID is required").optional(),
     avater_id: z.string().optional(),
   }),
 });

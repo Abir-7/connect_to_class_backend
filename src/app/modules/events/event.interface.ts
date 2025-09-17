@@ -10,4 +10,5 @@ export interface IEvent extends Document {
   end_time: string; // e.g. "15:00"
   class: Types.ObjectId;
   avater_id: string;
+  created_by: Types.ObjectId;
 }

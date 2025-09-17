@@ -11,7 +11,7 @@ const create_event = catch_async(async (req, res) => {
     ...req.body,
     ...(filePath && { image: get_relative_path(filePath) }),
   };
-  const result = await EventService.create_event(event_data);
+  const result = await EventService.create_event(event_data, req.user.user_id);
 
   send_response(res, {
     success: true,
@@ -34,7 +34,19 @@ const get_event_list_of_a_teacher = catch_async(async (req, res) => {
   });
 });
 
+const get_event_list_for_parent = catch_async(async (req, res) => {
+  const result = await EventService.get_event_list_for_parent(req.user.user_id);
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Event list  successfully fetched",
+    data: result,
+  });
+});
+
 export const EventController = {
   create_event,
   get_event_list_of_a_teacher,
+  get_event_list_for_parent,
 };

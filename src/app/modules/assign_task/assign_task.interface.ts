@@ -5,7 +5,7 @@ export interface ITask extends Document {
   description: string;
   assign_to: Types.ObjectId;
   assigned_by: Types.ObjectId;
-  due_date: Date;
+  due_date: number;
   due_time: string;
   priority: TaskPriority;
   createdAt: Date;

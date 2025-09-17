@@ -7,8 +7,9 @@ import Event from "./event.model";
 
 import AppError from "../../errors/AppError";
 import status from "http-status";
-import { get_cache, set_cache } from "../../lib/redis/cache";
+import { delete_cache, get_cache, set_cache } from "../../lib/redis/cache";
 import TeachersClass from "../teachers_class/teachers_class.model";
+import { ParentClass } from "../teachers_class/relational_schema/parent_class.interface.model";
 
 interface ICreateEventInput {
   image?: string;
@@ -22,14 +23,16 @@ interface ICreateEventInput {
   avater_id?: string;
 }
 
-const create_event = async (data: ICreateEventInput) => {
+const create_event = async (data: ICreateEventInput, user_id: string) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
-  const classData = await TeachersClass.findOne({ _id: data.class }).lean();
+  if (data.class) {
+    const classData = await TeachersClass.findOne({ _id: data.class }).lean();
 
-  if (!classData) {
-    throw new AppError(status.NOT_FOUND, "Class data not found.");
+    if (!classData) {
+      throw new AppError(status.NOT_FOUND, "Class data not found.");
+    }
   }
 
   try {
@@ -37,7 +40,8 @@ const create_event = async (data: ICreateEventInput) => {
       ...data,
       image: data.image || "",
       avater_id: data.avater_id || "",
-      class: data.class as any,
+      ...(data.class ? { class: data.class as any } : {}),
+      created_by: user_id as any,
     };
 
     const createdEvent = await Event.create([eventData], { session });
@@ -46,8 +50,26 @@ const create_event = async (data: ICreateEventInput) => {
     session.endSession();
 
     // Invalidate teacher's event list cache
-    const teacherId = classData.teacher.toString();
-    await set_cache(`teacher_events:${teacherId}`, null, 0); // clear cache
+
+    await delete_cache(`teacher_events:${user_id}`); // clear cache
+
+    let parentIds: string[] = [];
+
+    if (data.class) {
+      // Event for a specific class → only parents of that class
+      parentIds = (
+        await ParentClass.find({ class: data.class }).distinct("parent_id")
+      ).map((id: mongoose.Types.ObjectId) => id.toString());
+    } else {
+      parentIds = (await ParentClass.find({}).distinct("parent_id")).map(
+        (id: mongoose.Types.ObjectId) => id.toString()
+      );
+    }
+
+    const cachePromises = parentIds.map((pid) =>
+      delete_cache(`parent_events:${pid.toString()}`)
+    );
+    await Promise.all(cachePromises);
 
     return createdEvent[0];
   } catch (error) {
@@ -60,14 +82,22 @@ const create_event = async (data: ICreateEventInput) => {
 const get_event_list_of_a_teacher = async (user_id: string) => {
   const cacheKey = `teacher_events:${user_id}`;
 
-  // Step 1: Try to get cached data
+  // Try cache first
   const cachedData = await get_cache<any[]>(cacheKey);
-  if (cachedData) {
-    return cachedData; // cache hit
-  }
+  if (cachedData) return cachedData;
 
-  // Step 2: Cache miss → fetch from DB
   const events = await Event.aggregate([
+    // Always match events created by teacher OR with no class
+    {
+      $match: {
+        $or: [
+          { created_by: new mongoose.Types.ObjectId(user_id) },
+          { class: { $exists: false } },
+          { class: null },
+        ],
+      },
+    },
+    // Lookup class info if class exists
     {
       $lookup: {
         from: "teachersclasses",
@@ -76,26 +106,44 @@ const get_event_list_of_a_teacher = async (user_id: string) => {
         as: "classInfo",
       },
     },
-    { $unwind: "$classInfo" },
-    { $match: { "classInfo.teacher": new mongoose.Types.ObjectId(user_id) } },
+    { $unwind: { path: "$classInfo", preserveNullAndEmptyArrays: true } },
+    // Lookup class teacher info if class exists
     {
       $lookup: {
         from: "users",
         localField: "classInfo.teacher",
         foreignField: "_id",
-        as: "teacherInfo",
+        as: "classTeacherInfo",
       },
     },
-    { $unwind: { path: "$teacherInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $unwind: { path: "$classTeacherInfo", preserveNullAndEmptyArrays: true },
+    },
     {
       $lookup: {
         from: "userprofiles",
         localField: "classInfo.teacher",
         foreignField: "user",
+        as: "classTeacherProfile",
+      },
+    },
+    {
+      $unwind: {
+        path: "$classTeacherProfile",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // Lookup event creator profile (always)
+    {
+      $lookup: {
+        from: "userprofiles",
+        localField: "created_by",
+        foreignField: "user",
         as: "teacherProfile",
       },
     },
     { $unwind: { path: "$teacherProfile", preserveNullAndEmptyArrays: true } },
+    // Project final shape
     {
       $project: {
         _id: 1,
@@ -107,31 +155,120 @@ const get_event_list_of_a_teacher = async (user_id: string) => {
         start_time: 1,
         end_time: 1,
         avater_id: 1,
+        teacher: {
+          _id: "$created_by",
+          full_name: "$teacherProfile.full_name",
+          nick_name: "$teacherProfile.nick_name",
+          image: "$teacherProfile.image",
+        },
         class: {
-          _id: "$classInfo._id",
-          class_name: "$classInfo.class_name",
-          description: "$classInfo.description",
-          image: "$classInfo.image",
-          teacher: {
-            _id: "$teacherInfo._id",
-            email: "$teacherInfo.email",
-            role: "$teacherInfo.role",
-            full_name: "$teacherProfile.full_name",
-            nick_name: "$teacherProfile.nick_name",
-            image: "$teacherProfile.image",
+          $cond: {
+            if: { $gt: [{ $type: "$classInfo" }, "missing"] },
+            then: {
+              _id: "$classInfo._id",
+              class_name: "$classInfo.class_name",
+              description: "$classInfo.description",
+              image: "$classInfo.image",
+            },
+            else: null,
           },
         },
       },
     },
   ]);
 
-  // Step 3: Store fresh data in Redis
-  await set_cache(cacheKey, events, 60); // TTL 60s (or adjust)
+  // Cache and return
+  await set_cache(cacheKey, events, 60);
+  return events;
+};
 
+const get_event_list_for_parent = async (parent_id: string) => {
+  const cacheKey = `parent_events:${parent_id}`;
+
+  // Step 1: Check cache
+  const cachedData = await get_cache<any[]>(cacheKey);
+  if (cachedData) return cachedData;
+
+  // Step 2: Get class IDs the parent is enrolled in
+  const parentClasses = await mongoose
+    .model("ParentClass")
+    .find({ parent_id: parent_id })
+    .select("class")
+    .lean();
+
+  const classIds = parentClasses.map((c) => c.class);
+
+  // Step 3: Aggregate events
+  const events = await Event.aggregate([
+    {
+      $match: {
+        $or: [
+          { class: { $in: classIds } }, // events for parent's classes
+          { class: null }, // events with no class
+        ],
+      },
+    },
+    // Lookup class info if exists
+    {
+      $lookup: {
+        from: "teachersclasses",
+        localField: "class",
+        foreignField: "_id",
+        as: "classInfo",
+      },
+    },
+    { $unwind: { path: "$classInfo", preserveNullAndEmptyArrays: true } },
+    // Lookup teacher info from event creator
+    {
+      $lookup: {
+        from: "userprofiles",
+        localField: "created_by",
+        foreignField: "user",
+        as: "teacherProfile",
+      },
+    },
+    { $unwind: { path: "$teacherProfile", preserveNullAndEmptyArrays: true } },
+    // Project final shape
+    {
+      $project: {
+        _id: 1,
+        image: 1,
+        event_name: 1,
+        description: 1,
+        start_date: 1,
+        end_date: 1,
+        start_time: 1,
+        end_time: 1,
+        avater_id: 1,
+        teacher: {
+          _id: "$created_by",
+          full_name: "$teacherProfile.full_name",
+          nick_name: "$teacherProfile.nick_name",
+          image: "$teacherProfile.image",
+        },
+        class: {
+          $cond: {
+            if: { $gt: [{ $type: "$classInfo" }, "missing"] },
+            then: {
+              _id: "$classInfo._id",
+              class_name: "$classInfo.class_name",
+              description: "$classInfo.description",
+              image: "$classInfo.image",
+            },
+            else: null,
+          },
+        },
+      },
+    },
+  ]);
+
+  // Step 4: Cache and return
+  await set_cache(cacheKey, events, 60);
   return events;
 };
 
 export const EventService = {
   create_event,
   get_event_list_of_a_teacher,
+  get_event_list_for_parent,
 };

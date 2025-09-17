@@ -5,7 +5,6 @@ import { Types } from "mongoose";
 import { TaskStatus } from "./assign_task.interface";
 import { Task } from "./assign_task.model";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const assign_task_to_teacher = async (data: any, user_id: string) => {
   const saved_task = await Task.create({ ...data, assigned_by: user_id });
 
@@ -30,8 +29,9 @@ const tasks_list = async ({
   // Filter by status
   if (status) {
     if (status === TaskStatus.COMPLETED) {
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const now = new Date();
+      const threeDaysAgo = now.getTime() - 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
+
       match.status = TaskStatus.COMPLETED;
       match.updatedAt = { $gte: threeDaysAgo };
     } else {
@@ -124,8 +124,7 @@ const teacher_tasks_list = async (
   status: string = "all"
 ) => {
   const now = new Date();
-  const threeDaysAgo = new Date();
-  threeDaysAgo.setDate(now.getDate() - 3);
+  const threeDaysAgo = now.getTime() - 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
 
   let orFilter: any[] = [];
 

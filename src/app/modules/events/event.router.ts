@@ -20,7 +20,12 @@ router.post(
 router.get(
   "/get-event-list-of-a-teacher",
   auth("TEACHER"),
-
   EventController.get_event_list_of_a_teacher
+);
+
+router.get(
+  "/get-event-list-of-a-parent",
+  auth("PARENT"),
+  EventController.get_event_list_for_parent
 );
 export const EventRoute = router;
