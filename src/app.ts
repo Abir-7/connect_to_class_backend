@@ -18,7 +18,7 @@ import { StripeController } from "./app/modules/stripe/stripe.controller";
 const app = express();
 
 const cors_options = {
-  origin: ["*"], // need to add real http link like "https://yourdomain.com", "http://localhost:3000"
+  origin: ["*", "http://10.10.12.62:3000"], // need to add real http link like "https://yourdomain.com", "http://localhost:3000"
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
   credentials: true,
 };

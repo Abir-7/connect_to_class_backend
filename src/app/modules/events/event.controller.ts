@@ -20,6 +20,7 @@ const create_event = catch_async(async (req, res) => {
     data: result,
   });
 });
+
 const get_event_list_of_a_teacher = catch_async(async (req, res) => {
   const result = await EventService.get_event_list_of_a_teacher(
     req.user.user_id

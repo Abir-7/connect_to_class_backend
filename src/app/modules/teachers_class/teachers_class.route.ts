@@ -5,6 +5,7 @@ import { upload } from "../../middleware/fileUpload/file_upload_handler";
 import { parse_data_field } from "../../middleware/fileUpload/parse_data_field";
 import zod_validator from "../../middleware/zod_validator";
 import { zod_teachers_class_schema } from "./teachers_class.validation";
+import { UserKidsController } from "../users/users_kids/users_kids.controller";
 
 const router = Router();
 
@@ -38,6 +39,12 @@ router.get(
   "/get-kids-parent-list-of-a-class/:class_id",
   auth("TEACHER"),
   TeachersClassController.get_kids_parent_list_of_a_class
+);
+
+router.get(
+  "/get-parents-kids/:parent_id",
+  auth("TEACHER"),
+  UserKidsController.get_parants_kid
 );
 
 export const TeachersClassRoute = router;

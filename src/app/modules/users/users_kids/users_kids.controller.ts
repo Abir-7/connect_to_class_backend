@@ -27,6 +27,16 @@ const get_kids_by_parent = catch_async(async (req, res) => {
   send_response(res, {
     success: true,
     status_code: status.OK,
+    message: "Kids of a parent fetched successfully.",
+    data: result,
+  });
+});
+
+const get_parants_kid = catch_async(async (req, res) => {
+  const result = await UserKidsService.get_kids_by_parent(req.params.parent_id);
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
     message: "Kids of a parent added successfully.",
     data: result,
   });
@@ -35,4 +45,5 @@ const get_kids_by_parent = catch_async(async (req, res) => {
 export const UserKidsController = {
   add_users_kid,
   get_kids_by_parent,
+  get_parants_kid,
 };
