@@ -24,10 +24,11 @@ interface ICreateEventInput {
 }
 
 const create_event = async (data: ICreateEventInput, user_id: string) => {
+  console.log(data);
   const session = await mongoose.startSession();
   session.startTransaction();
 
-  if (data.class) {
+  if (data.class?.length > 0) {
     const classData = await TeachersClass.findOne({ _id: data.class }).lean();
 
     if (!classData) {
@@ -40,7 +41,7 @@ const create_event = async (data: ICreateEventInput, user_id: string) => {
       ...data,
       image: data.image || "",
       avater_id: data.avater_id || "",
-      ...(data.class ? { class: data.class as any } : {}),
+      ...(data.class?.length > 0 ? { class: data.class as any } : {}),
       created_by: user_id as any,
     };
 

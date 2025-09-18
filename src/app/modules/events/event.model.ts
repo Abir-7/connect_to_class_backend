@@ -13,7 +13,6 @@ const event_schema = new Schema<IEvent>(
       type: Schema.Types.ObjectId,
       ref: "TeachersClass",
       default: null,
-      index: true,
     },
     avater_id: { type: String, default: "" },
     created_by: {

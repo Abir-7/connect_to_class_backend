@@ -48,6 +48,7 @@ const user_schema = new Schema<IUser>(
   },
   { timestamps: true }
 );
+
 user_schema.methods.comparePassword = async function (
   entered_password: string
 ) {
