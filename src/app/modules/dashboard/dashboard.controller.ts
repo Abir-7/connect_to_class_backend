@@ -15,7 +15,8 @@ const overview_recent_user = catch_async(async (req, res) => {
     success: true,
     status_code: status.OK,
     message: "User data is fetched successfully",
-    data: result,
+    data: result.recent,
+    meta: result.meta,
   });
 });
 const overview_get_total_users = catch_async(async (req, res) => {
@@ -29,7 +30,25 @@ const overview_get_total_users = catch_async(async (req, res) => {
   });
 });
 
+const get_all_users = catch_async(async (req, res) => {
+  const result = await DashboardService.get_all_users(
+    req.query.role as string,
+    req.query.search_term as string,
+    Number(req.query.page || 1),
+    Number(req.query.limit || 10)
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "All user fetched successfully",
+    data: result.data,
+    meta: result.meta,
+  });
+});
+
 export const DashboardController = {
   overview_get_total_users,
   overview_recent_user,
+  get_all_users,
 };

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import mongoose from "mongoose";
 import { get_date_range } from "../../helperFunction/general/get_date_range";
@@ -142,7 +143,152 @@ const overview_get_total_users = async () => {
   };
 };
 
+const get_all_users = async (
+  role?: string,
+  search?: string,
+  page: number = 1,
+  limit: number = 10
+) => {
+  console.log(search, page, "ff");
+  const skip = (page - 1) * limit;
+
+  const searchRegex = search ? new RegExp(search, "i") : null; // case-insensitive search
+
+  // USERS AGGREGATION
+  const usersMatch: any = { role: { $ne: "ADMIN" } };
+  if (role && role !== "STUDENT") usersMatch.role = role;
+  if (role === "STUDENT") usersMatch._id = null; // block users when only students requested
+
+  if (searchRegex) {
+    usersMatch.$or = [
+      { email: searchRegex },
+      { "profile.full_name": searchRegex }, // we need to $match after $lookup
+    ];
+  }
+
+  const usersAgg = User.aggregate([
+    {
+      $match:
+        role === "STUDENT"
+          ? { _id: null }
+          : {
+              role: { $ne: "ADMIN" },
+              ...(role && role !== "STUDENT" ? { role } : {}),
+            },
+    },
+    {
+      $lookup: {
+        from: "userprofiles",
+        localField: "_id",
+        foreignField: "user",
+        as: "profile",
+      },
+    },
+    { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } },
+    ...(search
+      ? [
+          {
+            $match: {
+              $or: [
+                { email: searchRegex },
+                { "profile.full_name": searchRegex },
+              ],
+            },
+          },
+        ]
+      : []),
+    {
+      $project: {
+        _id: 1,
+        email: 1,
+        role: 1,
+        full_name: { $ifNull: ["$profile.full_name", "N/A"] },
+        nick_name: { $ifNull: ["$profile.nick_name", "N/A"] },
+        date_of_birth: {
+          $ifNull: [
+            {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$profile.date_of_birth",
+              },
+            },
+            "N/A",
+          ],
+        },
+        phone: { $ifNull: ["$profile.phone", "N/A"] },
+        address: { $ifNull: ["$profile.address", "N/A"] },
+        image: { $ifNull: ["$profile.image", "N/A"] },
+        avatar_id: { $literal: "N/A" },
+        gender: { $literal: "N/A" },
+      },
+    },
+  ]);
+
+  // KIDS AGGREGATION
+  const kidsMatch: any = {};
+  if (role && role !== "STUDENT") kidsMatch._id = null; // block kids if not requested
+
+  if (searchRegex) {
+    kidsMatch.full_name = searchRegex; // search by student full_name only
+  }
+
+  const kidsAgg = Kids.aggregate([
+    { $match: kidsMatch },
+    {
+      $project: {
+        _id: 1,
+        email: { $literal: "N/A" },
+        role: { $literal: "STUDENT" },
+        full_name: { $ifNull: ["$full_name", "N/A"] },
+        nick_name: { $literal: "N/A" },
+        date_of_birth: { $literal: "N/A" },
+        phone: { $literal: "N/A" },
+        address: { $literal: "N/A" },
+        image: { $ifNull: ["$image", "N/A"] },
+        avatar_id: { $ifNull: ["$avatar_id", "N/A"] },
+        gender: { $ifNull: ["$gender", "N/A"] },
+        parent: "$parent",
+      },
+    },
+  ]);
+
+  // RUN BOTH AGGREGATIONS & COUNT DOCUMENTS
+  const [users, kids, userCount, kidCount] = await Promise.all([
+    usersAgg,
+    kidsAgg,
+    role === "STUDENT"
+      ? 0
+      : User.countDocuments({
+          role: { $ne: "ADMIN" },
+          ...(role && role !== "STUDENT" ? { role } : {}),
+          ...(search ? { $or: [{ email: searchRegex }] } : {}),
+        }),
+    role && role !== "STUDENT"
+      ? 0
+      : Kids.countDocuments(search ? { full_name: searchRegex } : {}),
+  ]);
+
+  // MERGE + SORT + PAGINATE
+  const all = [...users, ...kids].sort(
+    (a, b) =>
+      (b._id as mongoose.Types.ObjectId).getTimestamp().getTime() -
+      (a._id as mongoose.Types.ObjectId).getTimestamp().getTime()
+  );
+
+  const paged = all.slice(skip, skip + limit);
+
+  const meta = {
+    total_item: userCount + kidCount,
+    total_page: Math.ceil((userCount + kidCount) / limit),
+    limit,
+    page,
+  };
+
+  return { meta, data: paged };
+};
+
 export const DashboardService = {
   overview_get_total_users,
   overview_recent_user,
+  get_all_users,
 };
