@@ -1,15 +1,47 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
+import AppError from "../../../errors/AppError";
+import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/cloudinaryUpload";
+import unlink_file from "../../../middleware/fileUpload/unlink_files";
 import { Post } from "./post.model";
 
 const create_post = async (
-  post_data: { image: string; description: string },
-  user_id: string
+  post_data: { description: string },
+  user_id: string,
+  images: string[]
 ) => {
-  const created_post = await Post.create({ ...post_data, teacher: user_id });
+  try {
+    let uploadedImages: string[] = [];
 
-  return created_post;
+    if (images && images.length > 0) {
+      // Upload images to Cloudinary
+      uploadedImages = await Promise.all(
+        images.map(async (filePath) => {
+          const result = await uploadFileToCloudinary(filePath, "postImage");
+          return result.url;
+        })
+      );
+    }
+
+    if (images?.length > 0) {
+      images.map((link) => unlink_file(link));
+    }
+
+    const created_post = await Post.create({
+      ...post_data,
+      teacher: user_id,
+      image: uploadedImages,
+    });
+
+    return created_post;
+  } catch (error) {
+    if (images?.length > 0) {
+      images.map((link) => unlink_file(link));
+    }
+    throw new AppError(500, "Failed to post");
+  }
 };
 
 interface IMeta {

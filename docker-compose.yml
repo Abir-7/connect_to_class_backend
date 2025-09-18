@@ -1,40 +1,60 @@
+# version: "3.9"
+
+# services:
+#   redis:
+#     image: redis:7
+#     container_name: connect-to-class-redis
+#     ports:
+#       - "6380:6379" # Avoid conflicts with other Redis instances
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+#   rabbitmq:
+#     image: rabbitmq:3-management
+#     container_name: connect-to-class-rabbitmq
+#     ports:
+#       - "5676:5672"    # AMQP
+#       - "15676:15672"  # Management UI
+#     environment:
+#       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+#       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+#     healthcheck:
+#       test: ["CMD", "rabbitmq-diagnostics", "ping"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+#   node-app:
+#     build: .
+#     container_name: connect-to-class-express
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#       rabbitmq:
+#         condition: service_healthy
+#     env_file:
+#       - .env
+#     ports:
+#       - "4012:4000"
+#     volumes:
+#       - .:/app
+#     command: npm run dev
+
+
+
 version: "3.9"
 
+networks:
+  shared-network:
+    external: true  # Connect to the shared network
+
 services:
-  redis:
-    image: redis:7
-    container_name: connect-to-class-redis
-    ports:
-      - "6380:6379" # Avoid conflicts with other Redis instances
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: connect-to-class-rabbitmq
-    ports:
-      - "5676:5672"    # AMQP
-      - "15676:15672"  # Management UI
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   node-app:
     build: .
     container_name: connect-to-class-express
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     env_file:
       - .env
     ports:
@@ -42,3 +62,5 @@ services:
     volumes:
       - .:/app
     command: npm run dev
+    networks:
+      - shared-network

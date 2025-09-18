@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import status from "http-status";
 import { get_relative_path } from "../../../middleware/fileUpload/get_relative_path";
 import catch_async from "../../../utils/serverTools/catch_async";
@@ -5,13 +6,18 @@ import send_response from "../../../utils/serverTools/send_response";
 import { PostService } from "./post.service";
 
 const create_post = catch_async(async (req, res) => {
-  const filePath = req.file?.path;
-
+  const files = req.files;
+  const filePaths = Array.isArray(files)
+    ? files.map((file: { path: any }) => get_relative_path(file.path))
+    : [];
   const post_data = {
     ...req.body,
-    ...(filePath && { image: get_relative_path(filePath) }),
   };
-  const result = await PostService.create_post(post_data, req.user.user_id);
+  const result = await PostService.create_post(
+    post_data,
+    req.user.user_id,
+    filePaths
+  );
 
   send_response(res, {
     success: true,

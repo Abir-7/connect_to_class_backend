@@ -1,0 +1,28 @@
+version: "3.9"
+
+networks:
+  shared-network:
+    external: true
+
+services:
+  redis:
+    image: redis:7
+    container_name: global-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - shared-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: global-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    restart: unless-stopped
+    networks:
+      - shared-network

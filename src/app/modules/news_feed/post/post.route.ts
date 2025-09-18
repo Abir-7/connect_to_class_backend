@@ -9,9 +9,8 @@ const router = Router();
 router.post(
   "/add-post",
   auth("TEACHER"),
-  upload.single("image"),
+  upload.array("images"),
   parse_data_field("data"),
-
   PostController.create_post
 );
 

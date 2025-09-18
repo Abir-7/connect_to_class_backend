@@ -31,7 +31,7 @@ const main = async () => {
   //------------------------//
   server.listen(
     Number(app_config.server.port),
-    app_config.server.ip as string,
+    //  app_config.server.ip as string,
     () => {
       logger.info(
         `Example app listening on port ${app_config.server.port} & ip:${
