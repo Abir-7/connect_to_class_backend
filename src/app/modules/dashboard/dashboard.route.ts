@@ -17,6 +17,7 @@ router.get(
   DashboardController.overview_get_total_users
 );
 router.get("/get-all-user", auth("ADMIN"), DashboardController.get_all_users);
+
 router.get(
   "/get-all-class",
   auth("ADMIN"),

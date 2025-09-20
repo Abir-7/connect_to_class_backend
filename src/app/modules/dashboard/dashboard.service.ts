@@ -208,17 +208,15 @@ const get_all_users = async (
   const skip = (page - 1) * limit;
   const searchRegex = search ? new RegExp(search, "i") : null;
 
-  // USERS + KIDS AGGREGATION COMBINED
   const pipeline: any[] = [
     // USERS PIPELINE
     {
       $match:
         role === "STUDENT"
-          ? { _id: null } // block users if student only requested
-          : {
-              role: { $ne: "ADMIN" },
-              ...(role && role !== "STUDENT" ? { role } : {}),
-            },
+          ? { _id: null }
+          : role === "ALL"
+          ? { role: { $ne: "ADMIN" } }
+          : { role },
     },
     {
       $lookup: {
@@ -267,18 +265,18 @@ const get_all_users = async (
       },
     },
 
-    // UNION WITH KIDS COLLECTION
+    // KIDS PIPELINE
     {
       $unionWith: {
         coll: "kids",
         pipeline: [
           {
             $match:
-              role && role !== "STUDENT"
-                ? { _id: null } // block kids if not requested
-                : searchRegex
-                ? { full_name: searchRegex }
-                : {},
+              role === "STUDENT" || role === "ALL" || !role
+                ? searchRegex
+                  ? { full_name: searchRegex }
+                  : {}
+                : { _id: null },
           },
           {
             $project: {
@@ -300,20 +298,16 @@ const get_all_users = async (
       },
     },
 
-    // SORT BY CREATED DATE (_id timestamp)
+    // SORT + PAGINATION
     { $sort: { _id: -1 } },
-
-    // PAGINATION
     { $skip: skip },
     { $limit: limit },
   ];
 
-  // RUN AGGREGATION
   const data = await User.aggregate(pipeline);
 
-  // COUNT TOTAL (need separate query because $unionWith doesn’t support $facet count easily)
   const [countResult] = await User.aggregate([
-    ...pipeline.filter((stage) => !("$skip" in stage || "$limit" in stage)), // remove pagination
+    ...pipeline.filter((stage) => !("$skip" in stage || "$limit" in stage)),
     { $count: "total" },
   ]);
 
@@ -328,6 +322,7 @@ const get_all_users = async (
 
   return { meta, data };
 };
+
 const get_all_class_list = async (
   search?: string,
   page: number = 1,
