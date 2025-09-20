@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import status from "http-status";
 import AppError from "../../../errors/AppError";
-import { get_relative_path } from "../../../middleware/fileUpload/get_relative_path";
+import { get_relative_path } from "../../../middleware/fileUpload/multer_file_storage/get_relative_path";
 import User from "../user/user.model";
-import unlink_file from "../../../middleware/fileUpload/unlink_files";
+import unlink_file from "../../../middleware/fileUpload/multer_file_storage/unlink_files";
 import { UserProfile } from "./user_profile.model";
 import { IUserProfile } from "./user_profile.interface";
 import { remove_falsy_fields } from "../../../utils/helper/remove_falsy_field";

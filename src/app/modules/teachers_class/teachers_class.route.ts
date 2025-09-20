@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { auth } from "../../middleware/auth/auth";
 import { TeachersClassController } from "./teachers_class.controller";
-import { upload } from "../../middleware/fileUpload/file_upload_handler";
-import { parse_data_field } from "../../middleware/fileUpload/parse_data_field";
+import { upload } from "../../middleware/fileUpload/multer_file_storage/file_upload_handler";
+import { parse_data_field } from "../../middleware/fileUpload/multer_file_storage/parse_data_field";
 import zod_validator from "../../middleware/zod_validator";
 import { zod_teachers_class_schema } from "./teachers_class.validation";
 import { UserKidsController } from "../users/users_kids/users_kids.controller";

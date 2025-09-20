@@ -3,7 +3,7 @@ import status from "http-status";
 import catch_async from "../../utils/serverTools/catch_async";
 import send_response from "../../utils/serverTools/send_response";
 import { TeachersClassService } from "./teachers_class.service";
-import { get_relative_path } from "../../middleware/fileUpload/get_relative_path";
+import { get_relative_path } from "../../middleware/fileUpload/multer_file_storage/get_relative_path";
 
 const create_teachers_class = catch_async(async (req, res) => {
   const filePath = req.file?.path;

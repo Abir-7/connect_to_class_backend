@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { auth } from "../../middleware/auth/auth";
-import { upload } from "../../middleware/fileUpload/file_upload_handler";
-import { parse_data_field } from "../../middleware/fileUpload/parse_data_field";
+import { upload } from "../../middleware/fileUpload/multer_file_storage/file_upload_handler";
+import { parse_data_field } from "../../middleware/fileUpload/multer_file_storage/parse_data_field";
 import zod_validator from "../../middleware/zod_validator";
 import { zod_event_schema } from "./event.validation";
 import { EventController } from "./event.controller";

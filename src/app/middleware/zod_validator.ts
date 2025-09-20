@@ -1,8 +1,8 @@
 import { AnyZodObject, ZodError } from "zod";
 
 import { NextFunction, Request, Response } from "express";
-import unlink_file from "./fileUpload/unlink_files";
-import { get_relative_path } from "./fileUpload/get_relative_path";
+import unlink_file from "./fileUpload/multer_file_storage/unlink_files";
+import { get_relative_path } from "./fileUpload/multer_file_storage/get_relative_path";
 import catch_async from "../utils/serverTools/catch_async";
 
 const zod_validator = (schema: AnyZodObject) =>

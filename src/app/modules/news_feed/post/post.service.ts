@@ -4,45 +4,95 @@
 
 import AppError from "../../../errors/AppError";
 import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/cloudinaryUpload";
-import unlink_file from "../../../middleware/fileUpload/unlink_files";
+import { uploadBufferToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/uploadBufferToCloudinary";
+import unlink_file from "../../../middleware/fileUpload/multer_file_storage/unlink_files";
+import { IMediaType } from "./post.interface";
 import { Post } from "./post.model";
 
 const create_post = async (
   post_data: { description: string },
   user_id: string,
-  images: string[]
+  file_paths: string[]
 ) => {
   try {
-    let uploadedImages: string[] = [];
+    let uploadedFiles: { url: string; public_id: string }[] = [];
 
-    if (images && images.length > 0) {
-      // Upload images to Cloudinary
-      uploadedImages = await Promise.all(
-        images.map(async (filePath) => {
-          const result = await uploadFileToCloudinary(filePath, "postImage");
-          return result.url;
-        })
+    if (file_paths && file_paths.length > 0) {
+      // Upload files to Cloudinary
+      uploadedFiles = (
+        await Promise.all(
+          file_paths.map(async (filePath) => {
+            let type: IMediaType | null = null;
+            if (filePath.startsWith("/videos/")) {
+              type = IMediaType.VIDEO;
+            } else if (filePath.startsWith("/images/")) {
+              type = IMediaType.IMAGE;
+            } else {
+              // skip invalid files
+              return null;
+            }
+
+            const result = await uploadFileToCloudinary(filePath, "postMedia");
+
+            return {
+              url: result.url,
+              public_id: result.public_id,
+              type,
+            };
+          })
+        )
+      ).filter(
+        (file): file is { url: string; public_id: string; type: IMediaType } =>
+          file !== null
       );
     }
 
-    if (images?.length > 0) {
-      images.map((link) => unlink_file(link));
+    if (file_paths?.length > 0) {
+      file_paths.map((filePath) => unlink_file(filePath));
     }
 
     const created_post = await Post.create({
       ...post_data,
       teacher: user_id,
-      image: uploadedImages,
+      files: uploadedFiles,
     });
 
     return created_post;
   } catch (error) {
-    if (images?.length > 0) {
-      images.map((link) => unlink_file(link));
+    if (file_paths?.length > 0) {
+      file_paths.map((filePath) => unlink_file(filePath));
     }
+    console.log(error);
     throw new AppError(500, "Failed to post");
   }
 };
+
+// const create_post = async (
+//   post_data: { description: string },
+//   user_id: string,
+//   files: Express.Multer.File[]
+// ) => {
+//   try {
+//     let uploadedImages: { url: string; public_id: string }[] = [];
+
+//     if (files && files.length > 0) {
+//       // Parallel upload of all images
+//       uploadedImages = await Promise.all(
+//         files.map((file) => uploadBufferToCloudinary(file.buffer, "postImage"))
+//       );
+//     }
+
+//     const created_post = await Post.create({
+//       ...post_data,
+//       teacher: user_id,
+//       image: uploadedImages, // store array of {url, public_id} objects
+//     });
+
+//     return created_post;
+//   } catch (error) {
+//     throw new AppError(500, "Failed to create post");
+//   }
+// };
 
 interface IMeta {
   total_item: number;
@@ -126,7 +176,7 @@ const get_all_post = async (page = 1, limit = 15): Promise<IPaginatedPosts> => {
     {
       $project: {
         _id: 1,
-        image: 1,
+        files: 1,
         description: 1,
         createdAt: 1,
         updatedAt: 1,

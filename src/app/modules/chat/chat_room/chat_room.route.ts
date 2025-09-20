@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { auth } from "../../../middleware/auth/auth";
 import { ChatRoomController } from "./chat_room.controller";
-import { upload } from "../../../middleware/fileUpload/file_upload_handler";
-import { parse_data_field } from "../../../middleware/fileUpload/parse_data_field";
+import { upload } from "../../../middleware/fileUpload/multer_file_storage/file_upload_handler";
+import { parse_data_field } from "../../../middleware/fileUpload/multer_file_storage/parse_data_field";
 
 const router = Router();
 

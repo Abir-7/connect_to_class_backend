@@ -10,7 +10,7 @@ import { ParentClass } from "../../teachers_class/relational_schema/parent_class
 import { Message } from "../message/message.model";
 import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/cloudinaryUpload";
 import AppError from "../../../errors/AppError";
-import unlink_file from "../../../middleware/fileUpload/unlink_files";
+import unlink_file from "../../../middleware/fileUpload/multer_file_storage/unlink_files";
 import path from "path";
 
 const get_user_chat_list = async (

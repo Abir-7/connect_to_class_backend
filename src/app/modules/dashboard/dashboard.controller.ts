@@ -5,10 +5,10 @@ import { DashboardService } from "./dashboard.service";
 
 const overview_recent_user = catch_async(async (req, res) => {
   const result = await DashboardService.overview_recent_user(
-    req.query.type as "last7days" | "lastMonth",
+    req.query.type as "last_7_days" | "last_month",
     req.query.search_term as string,
     Number(req.query.page || 1),
-    Number(req.query.limit || 10)
+    Number(req.query.limit || 7)
   );
 
   send_response(res, {

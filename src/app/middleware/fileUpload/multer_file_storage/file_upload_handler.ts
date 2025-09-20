@@ -2,8 +2,8 @@ import { Request } from "express";
 import multer, { FileFilterCallback } from "multer";
 import path from "path";
 import fs from "fs";
-import { app_config } from "../../config";
-import logger from "../../utils/serverTools/logger";
+import { app_config } from "../../../config";
+import logger from "../../../utils/serverTools/logger";
 
 // Allow only these file types
 const allowed_mime_types = [

@@ -2,11 +2,13 @@ interface TimeRange {
   start: Date;
   end: Date;
 }
-export const get_date_range = (type: "last7days" | "lastMonth"): TimeRange => {
+export const get_date_range = (
+  type: "last_7_days" | "last_month"
+): TimeRange => {
   const now = new Date();
   let start: Date;
 
-  if (type === "last7days") {
+  if (type === "last_7_days") {
     start = new Date(now);
     start.setDate(now.getDate() - 7);
   } else {

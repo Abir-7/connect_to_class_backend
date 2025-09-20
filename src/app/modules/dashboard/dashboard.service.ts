@@ -10,7 +10,7 @@ import { ParentClass } from "../teachers_class/relational_schema/parent_class.in
 import { KidsClass } from "../teachers_class/relational_schema/kids_class.interface.model";
 
 const overview_recent_user = async (
-  type: "last7days" | "lastMonth",
+  type: "last_7_days" | "last_month",
   search?: string,
   page: number = 1,
   limit: number = 10
@@ -22,6 +22,7 @@ const overview_recent_user = async (
     {
       $match: {
         createdAt: { $gte: start, $lte: end },
+        role: { $ne: "ADMIN" }, // skip admins
       },
     },
     {
@@ -55,8 +56,12 @@ const overview_recent_user = async (
       $unionWith: {
         coll: "kids",
         pipeline: [
-          { $match: { createdAt: { $gte: start, $lte: end } } },
-          // Lookup parent profile
+          {
+            $match: {
+              createdAt: { $gte: start, $lte: end },
+              role: { $ne: "ADMIN" }, // skip admins if role exists in kids
+            },
+          },
           {
             $lookup: {
               from: "userprofiles",
@@ -105,7 +110,6 @@ const overview_recent_user = async (
           { email: { $regex: search, $options: "i" } },
           { full_name: { $regex: search, $options: "i" } },
           { nick_name: { $regex: search, $options: "i" } },
-          { gender: { $regex: search, $options: "i" } },
           { parent: { $regex: search, $options: "i" } },
         ],
       },
@@ -116,7 +120,7 @@ const overview_recent_user = async (
   const countResult = await User.aggregate([...pipeline, { $count: "total" }]);
   const total_item = countResult[0]?.total || 0;
   const total_page = Math.ceil(total_item / limit);
-  console.log(page, limit);
+
   // 📄 Pagination
   const recentUsers = await User.aggregate([
     ...pipeline,
@@ -131,19 +135,68 @@ const overview_recent_user = async (
 };
 
 const overview_get_total_users = async () => {
+  const now = new Date();
+
+  // Current counts
   const [teachers, parents, students] = await Promise.all([
     User.countDocuments({ role: "TEACHER" }),
     User.countDocuments({ role: "PARENT" }),
-    Kids.countDocuments({}), // all kids are students
+    Kids.countDocuments({}),
   ]);
 
-  return {
-    totals: {
-      teachers,
-      parents,
-      students,
+  // Last month date range
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    0,
+    23,
+    59,
+    59,
+    999
+  );
+
+  // Last month counts
+  const [teachersLast, parentsLast, studentsLast] = await Promise.all([
+    User.countDocuments({
+      role: "TEACHER",
+      createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+    }),
+    User.countDocuments({
+      role: "PARENT",
+      createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+    }),
+    Kids.countDocuments({
+      createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+    }),
+  ]);
+
+  // Helper to calculate growth
+  const calcGrowth = (current: number, previous: number) =>
+    previous === 0
+      ? "N/A"
+      : Math.round(((current - previous) / previous) * 100);
+
+  // Return everything as a single array
+  const overviewArray = [
+    {
+      type: "teachers",
+      count: teachers,
+      growth: calcGrowth(teachers, teachersLast),
     },
-  };
+    {
+      type: "parents",
+      count: parents,
+      growth: calcGrowth(parents, parentsLast),
+    },
+    {
+      type: "students",
+      count: students,
+      growth: calcGrowth(students, studentsLast),
+    },
+  ];
+
+  return overviewArray;
 };
 
 const get_all_users = async (

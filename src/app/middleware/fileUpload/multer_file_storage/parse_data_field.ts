@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response, NextFunction } from "express";
-import AppError from "../../errors/AppError";
+import AppError from "../../../errors/AppError";
 
 export const parse_data_field =
   (field_name: string) =>

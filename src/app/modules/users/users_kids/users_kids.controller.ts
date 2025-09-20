@@ -1,5 +1,5 @@
 import status from "http-status";
-import { get_relative_path } from "../../../middleware/fileUpload/get_relative_path";
+import { get_relative_path } from "../../../middleware/fileUpload/multer_file_storage/get_relative_path";
 import catch_async from "../../../utils/serverTools/catch_async";
 import send_response from "../../../utils/serverTools/send_response";
 import { UserKidsService } from "./users_kids.service";
