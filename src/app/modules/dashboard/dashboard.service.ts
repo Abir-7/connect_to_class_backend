@@ -8,6 +8,7 @@ import TeachersClass from "../teachers_class/teachers_class.model";
 import Event from "../events/event.model";
 import { ParentClass } from "../teachers_class/relational_schema/parent_class.interface.model";
 import { KidsClass } from "../teachers_class/relational_schema/kids_class.interface.model";
+import { UserProfile } from "../users/user_profile/user_profile.model";
 
 const overview_recent_user = async (
   type: "last_7_days" | "last_month",
@@ -419,6 +420,8 @@ const get_class_members = async (
   limit = 10,
   search = ""
 ) => {
+  console.log(classId, role, page, limit, search);
+
   const objectId = new mongoose.Types.ObjectId(classId);
 
   let basePipeline: any[] = [];
@@ -463,6 +466,7 @@ const get_class_members = async (
           email: "$studentUser.email",
           role: { $literal: "student" },
           image: "$student.image",
+          joined_date: "$student.createdAt",
         },
       },
     ];
@@ -532,6 +536,7 @@ const get_class_members = async (
           email: "$parent.email",
           role: { $literal: "parent" },
           image: "$profile.image",
+          joined_date: "$parent.createdAt",
         },
       },
     ];
@@ -731,6 +736,46 @@ const get_all_event_list = async (
   };
 };
 
+const get_teacher_options = async (searchTerm: string = "") => {
+  const teachers = await UserProfile.aggregate([
+    // Join with the User collection
+    {
+      $lookup: {
+        from: "users", // collection name
+        localField: "user",
+        foreignField: "_id",
+        as: "user_info",
+      },
+    },
+    // Unwind user_info array
+    { $unwind: "$user_info" },
+    // Filter only TEACHER role
+    { $match: { "user_info.role": "TEACHER" } },
+    // Apply search if provided
+    ...(searchTerm
+      ? [
+          {
+            $match: {
+              full_name: { $regex: searchTerm, $options: "i" }, // case-insensitive search
+            },
+          },
+        ]
+      : []),
+    // Project label and value
+    {
+      $project: {
+        _id: 0,
+        label: "$full_name",
+        value: "$user_info._id",
+      },
+    },
+    // Optional: sort alphabetically
+    { $sort: { label: 1 } },
+  ]);
+
+  return teachers;
+};
+
 export default get_all_event_list;
 
 export const DashboardService = {
@@ -741,4 +786,5 @@ export const DashboardService = {
   get_teacher_info_of_class,
   get_class_members,
   get_all_event_list,
+  get_teacher_options,
 };

@@ -41,4 +41,10 @@ router.get(
   DashboardController.get_all_event_list
 );
 
+router.get(
+  "/get-teacher-option",
+  auth("ADMIN"),
+  DashboardController.get_teacher_options
+);
+
 export const DashboardRoute = router;

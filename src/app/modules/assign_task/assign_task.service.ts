@@ -25,7 +25,7 @@ const tasks_list = async ({
   search,
 }: IListTaskParams) => {
   const match: any = {};
-
+  console.log(status, "-------------");
   // Filter by status
   if (status) {
     if (status === TaskStatus.COMPLETED) {
@@ -34,8 +34,10 @@ const tasks_list = async ({
 
       match.status = TaskStatus.COMPLETED;
       match.updatedAt = { $gte: threeDaysAgo };
-    } else {
-      match.status = { $in: [TaskStatus.PENDING, TaskStatus.ONGOING] };
+    } else if (status === TaskStatus.ONGOING) {
+      match.status = { $in: [TaskStatus.ONGOING] };
+    } else if (status === TaskStatus.PENDING) {
+      match.status = { $in: [TaskStatus.PENDING] };
     }
   }
 

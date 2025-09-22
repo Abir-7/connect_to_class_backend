@@ -110,6 +110,18 @@ const get_all_event_list = catch_async(async (req, res) => {
     meta: result.meta,
   });
 });
+const get_teacher_options = catch_async(async (req, res) => {
+  const result = await DashboardService.get_teacher_options(
+    req.query.search_term as string
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Teachers list fetched successfully",
+    data: result,
+  });
+});
 export const DashboardController = {
   overview_get_total_users,
   overview_recent_user,
@@ -118,4 +130,5 @@ export const DashboardController = {
   get_class_members,
   get_teacher_info_of_class,
   get_all_event_list,
+  get_teacher_options,
 };
