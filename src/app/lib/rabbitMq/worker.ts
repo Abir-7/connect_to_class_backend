@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+import { deleteFileFromCloudinary } from "../../middleware/fileUpload/cloudinay_file_upload/deleteFromCloudinary";
 import { send_email } from "../../utils/send_email";
 import logger from "../../utils/serverTools/logger";
 import { consume_queue } from "./consumer";
@@ -16,6 +17,16 @@ export const start_consumers = () => {
       throw error; // let nack handle retry/discard
     }
   });
-};
+  consume_queue("delete_image_queue", async (job) => {
+    const { public_id } = job;
+    if (!public_id) return;
 
-// Initialize consumers when the app starts
+    try {
+      await deleteFileFromCloudinary(public_id);
+      logger.info(`Deleted old image: ${public_id}`);
+    } catch (err) {
+      logger.error(`Failed to delete image ${public_id}:`, err);
+      throw err; // consumer nack will handle retry or discard
+    }
+  });
+};

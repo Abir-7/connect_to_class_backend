@@ -8,6 +8,9 @@ import { UserProfile } from "./user_profile.model";
 import { IUserProfile } from "./user_profile.interface";
 import { remove_falsy_fields } from "../../../utils/helper/remove_falsy_field";
 import { delete_cache } from "../../../lib/redis/cache";
+import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/cloudinaryUpload";
+
+import { publish_job } from "../../../lib/rabbitMq/publisher";
 
 const update_profile_image = async (path: string, email: string) => {
   const user = await User.findOne({ email: email });
@@ -72,9 +75,35 @@ const update_profile = async (
   user_id: string
 ): Promise<IUserProfile | null> => {
   const data = remove_falsy_fields(userdata);
-  const updated = await UserProfile.findOneAndUpdate({ user: user_id }, data, {
-    new: true,
-  });
+
+  // Get existing profile to know old image
+  const existingProfile = await UserProfile.findOne({ user: user_id });
+
+  let cloud_image: { url: string; public_id: string } = {
+    url: existingProfile?.image || "",
+    public_id: existingProfile?.image_id || "",
+  };
+
+  // If new image is provided
+  if (data.image) {
+    // 1. Upload new image
+    const newImage = await uploadFileToCloudinary(data.image, "profile");
+    cloud_image = newImage;
+
+    // 2. Delete old image only if it exists
+    if (existingProfile?.image_id) {
+      await publish_job("delete_image_queue", {
+        public_id: existingProfile.image_id,
+      });
+    }
+  }
+
+  // Update profile with new data
+  const updated = await UserProfile.findOneAndUpdate(
+    { user: user_id },
+    { ...data, image: cloud_image.url, image_id: cloud_image.public_id },
+    { new: true }
+  );
 
   if (!updated) {
     throw new AppError(status.BAD_REQUEST, "Failed to update user info.");

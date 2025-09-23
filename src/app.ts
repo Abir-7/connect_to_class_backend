@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-function-type */
 import express from "express";
 import cors from "cors";
 import router from "./app/routes";
@@ -17,13 +18,22 @@ import { StripeController } from "./app/modules/stripe/stripe.controller";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://10.10.12.62:3000",
+  "http://192.168.50.85:3000",
+  "http://10.10.12.62:3001",
+  "https://01t71ck4-3000.inc1.devtunnels.ms",
+  // Add your production domain here
+];
+
 const cors_options = {
-  origin: [
-    "*",
-    "http://10.10.12.62:3000",
-    "http://192.168.50.85:3000",
-    "http://10.10.12.62:3001",
-  ], // need to add real http link like "https://yourdomain.com", "http://localhost:3000"
+  origin: function (origin: string | undefined, callback: Function) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
   credentials: true,
 };

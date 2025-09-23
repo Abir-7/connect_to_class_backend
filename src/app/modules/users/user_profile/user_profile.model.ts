@@ -9,6 +9,7 @@ const userProfileSchema = new Schema<IUserProfile>({
   address: { type: String, default: "" },
   image: { type: String, default: "" },
   user: { type: Schema.Types.ObjectId, ref: "User", unique: true },
+  image_id: { type: String, default: "" },
 });
 
 export const UserProfile = model<IUserProfile>(

@@ -10,6 +10,8 @@ import status from "http-status";
 import { delete_cache, get_cache, set_cache } from "../../lib/redis/cache";
 import TeachersClass from "../teachers_class/teachers_class.model";
 import { ParentClass } from "../teachers_class/relational_schema/parent_class.interface.model";
+import { app_config } from "../../config";
+import unlink_file from "../../middleware/fileUpload/multer_file_storage/unlink_files";
 
 interface ICreateEventInput {
   image?: string;
@@ -24,7 +26,6 @@ interface ICreateEventInput {
 }
 
 const create_event = async (data: ICreateEventInput, user_id: string) => {
-  console.log(data);
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -39,7 +40,7 @@ const create_event = async (data: ICreateEventInput, user_id: string) => {
   try {
     const eventData: Partial<IEvent> = {
       ...data,
-      image: data.image || "",
+      image: data.image ? `${app_config.server.baseurl}${data.image}` : "",
       avater_id: data.avater_id || "",
       ...(data.class?.length > 0 ? { class: data.class as any } : {}),
       created_by: user_id as any,
@@ -74,6 +75,9 @@ const create_event = async (data: ICreateEventInput, user_id: string) => {
 
     return createdEvent[0];
   } catch (error) {
+    if (data.image) {
+      unlink_file(data.image);
+    }
     await session.abortTransaction();
     session.endSession();
     throw error;

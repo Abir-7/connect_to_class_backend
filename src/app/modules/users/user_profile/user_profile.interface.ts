@@ -8,4 +8,5 @@ export interface IUserProfile extends Document {
   address?: string;
   image?: string;
   user: Types.ObjectId;
+  image_id: string;
 }

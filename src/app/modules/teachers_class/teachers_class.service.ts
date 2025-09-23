@@ -20,6 +20,8 @@ import Kids from "../users/users_kids/users_kids.model";
 import AppError from "../../errors/AppError";
 import { create_default_class_chats } from "../../helperFunction/with_db_query/create_group_when_new_class_create";
 import { ensureParentChats } from "../../helperFunction/with_db_query/add_parent_to_class_group_when_add";
+import { app_config } from "../../config";
+import unlink_file from "../../middleware/fileUpload/multer_file_storage/unlink_files";
 
 //import AppError from "../../errors/AppError";
 
@@ -40,7 +42,7 @@ const create_teachers_class = async (
     // 1️⃣ Create the class
     const classData = {
       ...data,
-      image: data.image || "",
+      image: data.image ? `${app_config.server.baseurl}${data.image}` : "",
       teacher: teacher_id,
     };
     const created_class = await TeachersClass.create([classData], { session });
@@ -60,6 +62,10 @@ const create_teachers_class = async (
 
     return created_class[0];
   } catch (error) {
+    if (data.image) {
+      unlink_file(data.image);
+    }
+
     await session.abortTransaction();
     session.endSession();
     throw error;
