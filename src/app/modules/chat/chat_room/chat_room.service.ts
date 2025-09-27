@@ -15,7 +15,9 @@ import path from "path";
 
 const get_user_chat_list = async (
   userId: string,
-  role: keyof typeof user_roles
+  role: keyof typeof user_roles,
+  page = 1,
+  limit = 20
 ) => {
   if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID");
   const userObjectId = new Types.ObjectId(userId);
@@ -45,10 +47,39 @@ const get_user_chat_list = async (
     };
   }
 
+  // 🔹 First aggregate to count total items (after filtering for membership)
+  const totalAgg = await ChatRoom.aggregate([
+    { $match: matchStage },
+    {
+      $lookup: {
+        from: "chatroommembers",
+        let: { chatId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$chat", "$$chatId"] },
+                  { $eq: ["$user", userObjectId] },
+                ],
+              },
+            },
+          },
+        ],
+        as: "member_info",
+      },
+    },
+    { $match: { "member_info.0": { $exists: true } } },
+    { $count: "total_item" },
+  ]);
+
+  const total_item = totalAgg[0]?.total_item || 0;
+
+  // 🔹 Then fetch paginated data
   const chats = await ChatRoom.aggregate([
     { $match: matchStage },
 
-    // Join chat members
+    // Join chat members (current user)
     {
       $lookup: {
         from: "chatroommembers",
@@ -110,7 +141,7 @@ const get_user_chat_list = async (
       },
     },
 
-    // 🔹 Count unread messages
+    // Count unread messages
     {
       $lookup: {
         from: "messages",
@@ -147,11 +178,115 @@ const get_user_chat_list = async (
       },
     },
 
+    // Lookup other user only for individual chats
+    {
+      $lookup: {
+        from: "chatroommembers",
+        let: { chatId: "$_id", chatType: "$type" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$chat", "$$chatId"] },
+                  { $ne: ["$user", userObjectId] },
+                  { $eq: ["$$chatType", "individual"] },
+                ],
+              },
+            },
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "user",
+              foreignField: "_id",
+              as: "user_info",
+            },
+          },
+          {
+            $lookup: {
+              from: "userprofiles",
+              localField: "user",
+              foreignField: "user",
+              as: "profile",
+            },
+          },
+          {
+            $addFields: {
+              user_info: { $arrayElemAt: ["$user_info", 0] },
+              profile: { $arrayElemAt: ["$profile", 0] },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              user: "$user_info._id",
+              email: "$user_info.email",
+              full_name: "$profile.full_name",
+              image: "$profile.image",
+            },
+          },
+        ],
+        as: "other_user",
+      },
+    },
+    {
+      $addFields: {
+        other_user: { $arrayElemAt: ["$other_user", 0] },
+      },
+    },
+
     // Clean up fields
     { $project: { members: 0, member_info: 0, unread: 0 } },
+
+    // 🔹 Pagination
+    { $skip: (page - 1) * limit },
+    { $limit: limit },
   ]);
 
-  return chats;
+  const meta = {
+    total_item,
+    total_page: Math.ceil(total_item / limit),
+    page,
+    limit,
+  };
+
+  const processedData = chats.map((chat) => {
+    if (chat.type === "group") {
+      return {
+        sender: chat.class_details?.class_name || "",
+        sender_image: chat.class_details?.image || "",
+        last_message: chat.last_message?.text || "",
+        last_message_image: chat.last_message?.image || [],
+        sending_time: chat.last_message?.createdAt || null,
+        total_unread: chat.total_unread,
+      };
+    }
+
+    if (chat.type === "teacher_only") {
+      return {
+        sender: chat.class_details?.class_name || "",
+        sender_image: chat.class_details?.image || "",
+        last_message: chat.last_message?.text || "",
+        last_message_image: chat.last_message?.image || [],
+        sending_time: chat.last_message?.createdAt || null,
+        total_unread: chat.total_unread,
+      };
+    }
+
+    if (chat.type === "individual") {
+      return {
+        sender: chat.other_user.full_name || "",
+        sender_image: chat.other_user?.image || "",
+        last_message: chat.last_message?.text || "",
+        last_message_image: chat.last_message?.image || [],
+        sending_time: chat.last_message?.createdAt || null,
+        total_unread: chat.total_unread,
+      };
+    }
+  });
+
+  return { data: processedData, meta };
 };
 
 const get_message_data = async (chatId: string, page = 1, limit = 50) => {

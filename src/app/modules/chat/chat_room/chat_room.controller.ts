@@ -15,7 +15,8 @@ const get_user_chat_list = catch_async(async (req, res) => {
     success: true,
     status_code: status.OK,
     message: "Chat list fetched succesfully",
-    data: result,
+    data: result.data,
+    meta: result.meta,
   });
 });
 
