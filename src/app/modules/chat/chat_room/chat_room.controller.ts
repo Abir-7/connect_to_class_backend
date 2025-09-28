@@ -36,6 +36,11 @@ const send_image = catch_async(async (req, res) => {
   const filePaths = Array.isArray(files)
     ? files.map((file: { path: any }) => get_relative_path(file.path))
     : [];
+
+  if (filePaths.length === 0) {
+    throw Error("Failed to send iamge, try again.");
+  }
+
   const result = await ChatRoomService.send_image(filePaths);
 
   send_response(res, {
@@ -46,8 +51,24 @@ const send_image = catch_async(async (req, res) => {
   });
 });
 
+const send_message = catch_async(async (req, res) => {
+  const result = await ChatRoomService.send_message(
+    req.body,
+    req.user.user_id,
+    req.params.chat_id
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Message sent",
+    data: result,
+  });
+});
+
 export const ChatRoomController = {
   get_user_chat_list,
   get_message_data,
   send_image,
+  send_message,
 };

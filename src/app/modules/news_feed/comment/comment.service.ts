@@ -99,9 +99,107 @@ const delete_comment = async (data: {
   }
 };
 
+const get_all_comment_of_post = async (postId: string) => {
+  const comments = await Comment.aggregate([
+    {
+      $match: {
+        post_id: new mongoose.Types.ObjectId(postId),
+      },
+    },
+    // Lookup replies for each comment
+    {
+      $lookup: {
+        from: "commentreplies", // MongoDB collection name
+        localField: "_id",
+        foreignField: "comment_id",
+        as: "replies",
+      },
+    },
+    // Count total replies
+    {
+      $addFields: {
+        totalReplies: { $size: "$replies" },
+      },
+    },
+    // Lookup user profile
+    {
+      $lookup: {
+        from: "userprofiles", // MongoDB collection name for UserProfile
+        localField: "user_id",
+        foreignField: "user",
+        as: "userProfile",
+      },
+    },
+    // Flatten userProfile array
+    {
+      $unwind: {
+        path: "$userProfile",
+        preserveNullAndEmptyArrays: true, // if profile is missing
+      },
+    },
+    {
+      $project: {
+        replies: 0, // remove full replies if not needed
+      },
+    },
+    {
+      $sort: { createdAt: -1 }, // newest first
+    },
+  ]);
+
+  return comments.map((c) => ({
+    comment_id: c._id,
+    comment: c.comment,
+    total_replies: c.totalReplies,
+    full_nmae: c.userProfile?.full_name || "",
+    image: c.userProfile?.image || "",
+    user_id: c.user_id,
+    createdAt: c.createdAt,
+  }));
+};
+
+const get_reply_list_of_a_comment = async (comment_id: string) => {
+  const replies = await CommentReply.aggregate([
+    {
+      $match: { comment_id: new mongoose.Types.ObjectId(comment_id) },
+    },
+    // Lookup user profile for each reply's user
+    {
+      $lookup: {
+        from: "userprofiles",
+        localField: "user_id",
+        foreignField: "user",
+        as: "userProfile",
+      },
+    },
+    { $unwind: { path: "$userProfile", preserveNullAndEmptyArrays: true } },
+    // Only keep needed fields
+    {
+      $project: {
+        _id: 1, // replyId
+        reply: 1,
+        user_id: 1,
+        "userProfile.full_name": 1,
+        "userProfile.image": 1,
+      },
+    },
+    { $sort: { createdAt: 1 } }, // oldest -> newest
+  ]);
+
+  return replies.map((r) => ({
+    replyId: r._id,
+    reply: r.reply,
+    userId: r.user_id,
+    userName: r.userProfile?.full_name || "",
+    image: r.userProfile?.image || "",
+  }));
+};
+
 export const CommentService = {
   create_comment,
   toggle_comment_like,
   create_reply,
   delete_comment,
+  get_all_comment_of_post,
+  get_reply_list_of_a_comment,
 };

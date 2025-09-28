@@ -24,5 +24,11 @@ router.post(
   parse_data_field("data"),
   ChatRoomController.send_image
 );
+router.post(
+  "/send-message/:chat_id",
+  auth("PARENT", "TEACHER"),
+
+  ChatRoomController.send_message
+);
 
 export const ChatRoute = router;

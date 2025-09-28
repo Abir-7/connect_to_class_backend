@@ -260,6 +260,7 @@ const get_user_chat_list = async (
         last_message_image: chat.last_message?.image || [],
         sending_time: chat.last_message?.createdAt || null,
         total_unread: chat.total_unread,
+        chat_id: chat._id,
       };
     }
 
@@ -271,6 +272,7 @@ const get_user_chat_list = async (
         last_message_image: chat.last_message?.image || [],
         sending_time: chat.last_message?.createdAt || null,
         total_unread: chat.total_unread,
+        chat_id: chat._id,
       };
     }
 
@@ -282,6 +284,7 @@ const get_user_chat_list = async (
         last_message_image: chat.last_message?.image || [],
         sending_time: chat.last_message?.createdAt || null,
         total_unread: chat.total_unread,
+        chat_id: chat._id,
       };
     }
   });
@@ -380,10 +383,24 @@ export const send_image = async (images: string[]) => {
   }
 };
 
+const send_message = async (
+  message_data: { message: string; images: string[] },
+  user_id: string,
+  chat_id: string
+) => {
+  const savedMessage = await Message.create({
+    chat: chat_id,
+    sender: user_id,
+    ...message_data,
+  });
+  return savedMessage;
+};
+
 export const ChatRoomService = {
   get_user_chat_list,
   get_message_data,
   send_image,
+  send_message,
 };
 
 /**

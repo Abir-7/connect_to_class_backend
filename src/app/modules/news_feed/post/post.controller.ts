@@ -59,7 +59,8 @@ const create_post = catch_async(async (req, res) => {
 const get_all_post = catch_async(async (req, res) => {
   const result = await PostService.get_all_post(
     Number(req.query.page) || 1,
-    Number(req.query.limit) || 15
+    Number(req.query.limit) || 15,
+    req.user.user_id
   );
 
   send_response(res, {

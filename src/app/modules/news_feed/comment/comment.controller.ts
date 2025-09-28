@@ -60,9 +60,37 @@ const delete_comment = catch_async(async (req, res) => {
   });
 });
 
+const get_all_comment_of_post = catch_async(async (req, res) => {
+  const result = await CommentService.get_all_comment_of_post(
+    req.params.post_id
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Comment fetched",
+    data: result,
+  });
+});
+
+const get_reply_list_of_a_comment = catch_async(async (req, res) => {
+  const result = await CommentService.get_reply_list_of_a_comment(
+    req.params.comment_id
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Comment reply fetched",
+    data: result,
+  });
+});
+
 export const CommentController = {
   create_comment,
   toggle_comment_like,
   create_reply,
   delete_comment,
+  get_all_comment_of_post,
+  get_reply_list_of_a_comment,
 };

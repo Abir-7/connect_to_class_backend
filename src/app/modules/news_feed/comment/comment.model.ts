@@ -8,8 +8,7 @@ const commentSchema = new Schema<IComment>(
     comment: { type: String, required: true, trim: true },
   },
   {
-    timestamps: true, // adds createdAt & updatedAt
+    timestamps: true,
   }
 );
-
 export const Comment = model<IComment>("Comment", commentSchema);

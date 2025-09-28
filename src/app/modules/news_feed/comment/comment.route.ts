@@ -21,6 +21,17 @@ router.post(
   CommentController.create_reply
 );
 
+router.get(
+  "/get-comments-of-a-post/:post_id",
+  auth("TEACHER", "PARENT"),
+  CommentController.get_all_comment_of_post
+);
+router.get(
+  "/get-reply-of-a-comment/:comment_id",
+  auth("TEACHER", "PARENT"),
+  CommentController.get_reply_list_of_a_comment
+);
+
 router.delete(
   "/delete-comment/:comment_id",
   auth("TEACHER", "PARENT"),
