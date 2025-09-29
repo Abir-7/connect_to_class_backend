@@ -27,6 +27,8 @@ export const saveMessage = async ({
   const chatExists = await ChatRoom.exists({ _id: chat });
   if (!chatExists) throw new AppError(404, "Chat not found");
 
+  console.log(text, "FFF");
+
   // 2️⃣ Save message
   const saved_message = await Message.create({
     chat,

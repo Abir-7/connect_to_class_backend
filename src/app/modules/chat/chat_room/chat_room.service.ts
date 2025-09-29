@@ -12,6 +12,7 @@ import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay
 import AppError from "../../../errors/AppError";
 import unlink_file from "../../../middleware/fileUpload/multer_file_storage/unlink_files";
 import path from "path";
+import { saveMessage } from "../../../helperFunction/with_db_query/save_message_mark_read";
 
 const get_user_chat_list = async (
   userId: string,
@@ -384,16 +385,17 @@ export const send_image = async (images: string[]) => {
 };
 
 const send_message = async (
-  message_data: { message: string; images: string[] },
+  message_data: { text: string; images: string[] },
   user_id: string,
   chat_id: string
 ) => {
-  const savedMessage = await Message.create({
+  saveMessage({
     chat: chat_id,
     sender: user_id,
-    ...message_data,
+    images: message_data.images || [],
+    text: message_data.text,
   });
-  return savedMessage;
+  return "Message send.";
 };
 
 export const ChatRoomService = {
