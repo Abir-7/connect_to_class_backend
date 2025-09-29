@@ -43,7 +43,7 @@ app.use(morgan("combined"));
 app.use(compression());
 app.use(cors(cors_options));
 app.use(cookie_parser());
-app.set("trust proxy", true);
+//app.set("trust proxy", true);
 app.use(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),

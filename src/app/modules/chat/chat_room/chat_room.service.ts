@@ -262,6 +262,7 @@ const get_user_chat_list = async (
         sending_time: chat.last_message?.createdAt || null,
         total_unread: chat.total_unread,
         chat_id: chat._id,
+        type: chat.type,
       };
     }
 
@@ -274,6 +275,7 @@ const get_user_chat_list = async (
         sending_time: chat.last_message?.createdAt || null,
         total_unread: chat.total_unread,
         chat_id: chat._id,
+        type: chat.type,
       };
     }
 
@@ -286,6 +288,7 @@ const get_user_chat_list = async (
         sending_time: chat.last_message?.createdAt || null,
         total_unread: chat.total_unread,
         chat_id: chat._id,
+        type: chat.type,
       };
     }
   });
