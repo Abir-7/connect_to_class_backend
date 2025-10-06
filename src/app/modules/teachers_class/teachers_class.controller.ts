@@ -62,10 +62,25 @@ const add_kids_to_class = catch_async(async (req, res) => {
     data: result,
   });
 });
+
 const get_kids_parent_list_of_a_class = catch_async(async (req, res) => {
   const result = await TeachersClassService.get_kids_parent_list_of_a_class(
     req.params.class_id,
     req.query.member_type as any
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Kids and parent added to class.",
+    data: result,
+  });
+});
+
+const removeKidsFromClass = catch_async(async (req, res) => {
+  const result = await TeachersClassService.removeKidsFromClass(
+    req.params.class_id,
+    req.query.kids_id as any
   );
 
   send_response(res, {
@@ -82,4 +97,5 @@ export const TeachersClassController = {
   search_users,
   add_kids_to_class,
   get_kids_parent_list_of_a_class,
+  removeKidsFromClass,
 };

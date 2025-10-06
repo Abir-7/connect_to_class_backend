@@ -18,13 +18,17 @@ const get_user_chat_list = async (
   userId: string,
   role: keyof typeof user_roles,
   page = 1,
-  limit = 20
+  limit = 20,
+  chatId?: string // ✅ optional chatId filter
 ) => {
   if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID");
   const userObjectId = new Types.ObjectId(userId);
 
   let matchStage: any = {};
-
+  if (chatId) {
+    if (!Types.ObjectId.isValid(chatId)) throw new Error("Invalid chat ID");
+    matchStage._id = new Types.ObjectId(chatId);
+  }
   if (role === user_roles.PARENT) {
     const activeClasses = await ParentClass.find({
       parent_id: userObjectId,

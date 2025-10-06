@@ -46,5 +46,10 @@ router.get(
   auth("TEACHER"),
   UserKidsController.get_parants_kid
 );
+router.delete(
+  "/remove-kids/:class_id",
+  auth("TEACHER"),
+  TeachersClassController.removeKidsFromClass
+);
 
 export const TeachersClassRoute = router;

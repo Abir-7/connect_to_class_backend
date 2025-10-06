@@ -11,6 +11,8 @@ import { markChatAsRead } from "../../helperFunction/with_db_query/mark_message_
 import { MessageData, SendMessagePayload } from "./data.interface";
 import redis from "../redis/redis";
 
+import { sendSingleChat } from "../../helperFunction/with_db_query/emit_chatlist_single_data";
+
 interface User {
   user_id: string;
   socket_id: string;
@@ -76,6 +78,16 @@ export const initSocket = async (httpServer: HttpServer) => {
         images: withDate.image,
       }).catch((err) =>
         logger.error(`Failed to save message in chat ${chat_id}: ${err}`)
+      );
+
+      sendSingleChat(
+        data.message_data.sender.full_name,
+        data.message_data.sender.full_name,
+        message_data.sender.image,
+        withDate.createdAt!,
+        data.chat_id,
+        message_data.text,
+        message_data.image
       );
     });
 
