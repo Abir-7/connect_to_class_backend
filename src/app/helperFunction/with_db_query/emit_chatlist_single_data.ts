@@ -31,5 +31,7 @@ export const sendSingleChat = async (
     total_unread: 1,
   };
 
-  chat_members.map((mem) => io.emit(`chat-list-${mem._id}`, chatListData));
+  chat_members.map((mem) => {
+    io.emit(`chat-list-${mem._id}`, chatListData);
+  });
 };
