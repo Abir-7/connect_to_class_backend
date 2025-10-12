@@ -59,7 +59,7 @@ export const initSocket = async (httpServer: HttpServer) => {
     logger.info(`User ${user_id} connected with socket ${socket.id}`);
 
     // ------------------- Send Message -------------------
-    socket.on("send-message", (data: SendMessagePayload) => {
+    socket.on("send-message", async (data: SendMessagePayload) => {
       const { chat_id, message_data } = data;
       const withDate: MessageData = {
         ...message_data,
@@ -92,8 +92,8 @@ export const initSocket = async (httpServer: HttpServer) => {
     });
 
     // ------------------- Message Read -------------------
-    socket.on("message-read", ({ chatId, userId }) => {
-      markChatAsRead(chatId, userId);
+    socket.on("message-read", ({ chat_id, user_id: userId }) => {
+      markChatAsRead(chat_id, userId);
     });
 
     // ------------------- Disconnect -------------------
