@@ -17,6 +17,12 @@ router.get(
   ChatRoomController.get_message_data
 );
 
+router.get(
+  "/user-list-of-a-chat/:chat_room_id",
+  auth("TEACHER", "PARENT"),
+  ChatRoomController.get_user_list_of_a_chat
+);
+
 router.post(
   "/send-image/:chat_id",
   auth("PARENT", "TEACHER"),

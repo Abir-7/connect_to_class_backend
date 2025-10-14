@@ -391,13 +391,11 @@ const get_kids_parent_list_of_a_class = async (
   class_id: string,
   filter: "kids" | "parents"
 ) => {
-  console.log(filter);
-
   const cacheKey = `class:${class_id}:${filter}`;
 
   // 1️⃣ Try cache
-  // const cached = await get_cache<any[]>(cacheKey);
-  // if (cached) return cached;
+  const cached = await get_cache<any[]>(cacheKey);
+  if (cached) return cached;
 
   const classObjectId = new mongoose.Types.ObjectId(class_id);
   let result: any[] = [];

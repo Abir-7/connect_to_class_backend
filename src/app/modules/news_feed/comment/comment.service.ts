@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import mongoose from "mongoose";
 import { ICommentLike } from "../comment_like/comment_like.interface";
@@ -99,64 +100,260 @@ const delete_comment = async (data: {
   }
 };
 
-const get_all_comment_of_post = async (postId: string) => {
-  const comments = await Comment.aggregate([
-    {
-      $match: {
-        post_id: new mongoose.Types.ObjectId(postId),
-      },
-    },
-    // Lookup replies for each comment
+// const get_all_comment_of_post = async (postId: string) => {
+//   const comments = await Comment.aggregate([
+//     {
+//       $match: {
+//         post_id: new mongoose.Types.ObjectId(postId),
+//       },
+//     },
+//     // Lookup replies for each comment
+//     {
+//       $lookup: {
+//         from: "commentreplies", // MongoDB collection name
+//         localField: "_id",
+//         foreignField: "comment_id",
+//         as: "replies",
+//       },
+//     },
+//     // Count total replies
+//     {
+//       $addFields: {
+//         totalReplies: { $size: "$replies" },
+//       },
+//     },
+//     // Lookup user profile
+//     {
+//       $lookup: {
+//         from: "userprofiles", // MongoDB collection name for UserProfile
+//         localField: "user_id",
+//         foreignField: "user",
+//         as: "userProfile",
+//       },
+//     },
+//     // Flatten userProfile array
+//     {
+//       $unwind: {
+//         path: "$userProfile",
+//         preserveNullAndEmptyArrays: true, // if profile is missing
+//       },
+//     },
+//     {
+//       $project: {
+//         replies: 0, // remove full replies if not needed
+//       },
+//     },
+//     {
+//       $sort: { createdAt: -1 }, // newest first
+//     },
+//   ]);
+
+const get_all_comment_of_post = async (
+  postId: string,
+  page = 1,
+  limit = 15,
+  currentUserId?: string // optional user_id
+) => {
+  const skip = (page - 1) * limit;
+
+  const matchStage: any = {
+    post_id: new mongoose.Types.ObjectId(postId),
+  };
+
+  const pipeline: any[] = [
+    { $match: matchStage },
+
+    // Lookup replies count
     {
       $lookup: {
-        from: "commentreplies", // MongoDB collection name
+        from: "commentreplies",
         localField: "_id",
         foreignField: "comment_id",
         as: "replies",
       },
     },
-    // Count total replies
     {
       $addFields: {
         totalReplies: { $size: "$replies" },
       },
     },
+
+    // Lookup likes
+    {
+      $lookup: {
+        from: "commentlikes",
+        localField: "_id",
+        foreignField: "comment_id",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        totalLikes: { $size: "$likes" },
+      },
+    },
+
     // Lookup user profile
     {
       $lookup: {
-        from: "userprofiles", // MongoDB collection name for UserProfile
+        from: "userprofiles",
         localField: "user_id",
         foreignField: "user",
         as: "userProfile",
       },
     },
-    // Flatten userProfile array
     {
       $unwind: {
         path: "$userProfile",
-        preserveNullAndEmptyArrays: true, // if profile is missing
+        preserveNullAndEmptyArrays: true,
       },
     },
-    {
-      $project: {
-        replies: 0, // remove full replies if not needed
-      },
-    },
-    {
-      $sort: { createdAt: -1 }, // newest first
-    },
-  ]);
 
-  return comments.map((c) => ({
+    // Sort + Pagination
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+  ];
+
+  // 👇 If user_id is provided, add isLiked field
+  if (currentUserId) {
+    pipeline.push({
+      $addFields: {
+        isLiked: {
+          $in: [new mongoose.Types.ObjectId(currentUserId), "$likes.user_id"],
+        },
+      },
+    });
+  } else {
+    pipeline.push({
+      $addFields: {
+        isLiked: false,
+      },
+    });
+  }
+
+  // Final projection
+  pipeline.push({
+    $project: {
+      replies: 0,
+      likes: 0,
+    },
+  });
+
+  const comments = await Comment.aggregate(pipeline);
+
+  const totalComments = await Comment.countDocuments({
+    post_id: new mongoose.Types.ObjectId(postId),
+  });
+
+  const meta = {
+    total_item: totalComments,
+    total_page: Math.ceil(totalComments / limit),
+    limit,
+    page,
+  };
+
+  const data = comments.map((c) => ({
     comment_id: c._id,
     comment: c.comment,
     total_replies: c.totalReplies,
-    full_nmae: c.userProfile?.full_name || "",
+    total_likes: c.totalLikes,
+    is_liked: c.isLiked || false,
+    full_name: c.userProfile?.full_name || "",
     image: c.userProfile?.image || "",
     user_id: c.user_id,
     createdAt: c.createdAt,
   }));
+
+  return { data, meta };
 };
+
+//   return comments.map((c) => ({
+//     comment_id: c._id,
+//     comment: c.comment,
+//     total_replies: c.totalReplies,
+//     full_nmae: c.userProfile?.full_name || "",
+//     image: c.userProfile?.image || "",
+//     user_id: c.user_id,
+//     createdAt: c.createdAt,
+//   }));
+// };
+
+// const get_all_comment_of_post = async (
+//   postId: string,
+//   page = 1,
+//   limit = 15
+// ) => {
+//   const skip = (page - 1) * limit;
+
+//   const comments = await Comment.aggregate([
+//     {
+//       $match: {
+//         post_id: new mongoose.Types.ObjectId(postId),
+//       },
+//     },
+//     {
+//       $lookup: {
+//         from: "commentreplies",
+//         localField: "_id",
+//         foreignField: "comment_id",
+//         as: "replies",
+//       },
+//     },
+//     {
+//       $addFields: {
+//         totalReplies: { $size: "$replies" },
+//       },
+//     },
+//     {
+//       $lookup: {
+//         from: "userprofiles",
+//         localField: "user_id",
+//         foreignField: "user",
+//         as: "userProfile",
+//       },
+//     },
+//     {
+//       $unwind: {
+//         path: "$userProfile",
+//         preserveNullAndEmptyArrays: true,
+//       },
+//     },
+//     {
+//       $project: {
+//         replies: 0,
+//       },
+//     },
+//     {
+//       $sort: { createdAt: -1 },
+//     },
+//     { $skip: skip },
+//     { $limit: limit },
+//   ]);
+
+//   const totalComments = await Comment.countDocuments({
+//     post_id: new mongoose.Types.ObjectId(postId),
+//   });
+
+//   const meta = {
+//     total_item: totalComments,
+//     total_page: Math.ceil(totalComments / limit),
+//     limit,
+//     page,
+//   };
+
+//   const data = comments.map((c) => ({
+//     comment_id: c._id,
+//     comment: c.comment,
+//     total_replies: c.totalReplies,
+//     full_name: c.userProfile?.full_name || "",
+//     image: c.userProfile?.image || "",
+//     user_id: c.user_id,
+//     createdAt: c.createdAt,
+//   }));
+
+//   return { data, meta };
+// };
 
 const get_reply_list_of_a_comment = async (comment_id: string) => {
   const replies = await CommentReply.aggregate([

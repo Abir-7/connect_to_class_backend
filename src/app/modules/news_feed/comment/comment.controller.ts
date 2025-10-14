@@ -62,14 +62,18 @@ const delete_comment = catch_async(async (req, res) => {
 
 const get_all_comment_of_post = catch_async(async (req, res) => {
   const result = await CommentService.get_all_comment_of_post(
-    req.params.post_id
+    req.params.post_id,
+    Number(req.query.page) || 1,
+    15,
+    req.user.user_id
   );
 
   send_response(res, {
     success: true,
     status_code: status.OK,
     message: "Comment fetched",
-    data: result,
+    data: result.data,
+    meta: result.meta,
   });
 });
 

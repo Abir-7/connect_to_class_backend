@@ -13,6 +13,8 @@ import AppError from "../../../errors/AppError";
 import unlink_file from "../../../middleware/fileUpload/multer_file_storage/unlink_files";
 import path from "path";
 import { saveMessage } from "../../../helperFunction/with_db_query/save_message_mark_read";
+import { ChatRoomMember } from "../chat_room_members/chat_room_members.model";
+import { UserProfile } from "../../users/user_profile/user_profile.model";
 
 const get_user_chat_list = async (
   userId: string,
@@ -405,11 +407,41 @@ const send_message = async (
   return "Message send.";
 };
 
+const get_user_list_of_a_chat = async (chat_id: string) => {
+  const member_list = await ChatRoomMember.find({ chat: chat_id })
+    .select("user -_id")
+    .lean();
+
+  if (!member_list.length) return { parents: [], teachers: [] };
+
+  const userIds = member_list.map((m) => m.user);
+
+  const user_profile_list = (await UserProfile.find({
+    user: { $in: userIds },
+  })
+    .populate({ path: "user", select: "email role -_id" })
+    .lean()) as any;
+
+  // Filter by role
+  const parents = user_profile_list.filter(
+    (u: any) => u.user?.role === "PARENT"
+  );
+  const teachers = user_profile_list.filter(
+    (u: any) => u.user?.role === "TEACHER"
+  );
+
+  return {
+    parents,
+    teachers,
+  };
+};
+
 export const ChatRoomService = {
   get_user_chat_list,
   get_message_data,
   send_image,
   send_message,
+  get_user_list_of_a_chat,
 };
 
 /**

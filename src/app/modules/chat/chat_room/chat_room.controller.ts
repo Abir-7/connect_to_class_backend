@@ -8,7 +8,8 @@ import { get_relative_path } from "../../../middleware/fileUpload/multer_file_st
 const get_user_chat_list = catch_async(async (req, res) => {
   const result = await ChatRoomService.get_user_chat_list(
     req.user.user_id,
-    req.user.user_role
+    req.user.user_role,
+    Number(req.query.page) || 1
   );
 
   send_response(res, {
@@ -21,7 +22,10 @@ const get_user_chat_list = catch_async(async (req, res) => {
 });
 
 const get_message_data = catch_async(async (req, res) => {
-  const result = await ChatRoomService.get_message_data(req.params.chat_id);
+  const result = await ChatRoomService.get_message_data(
+    req.params.chat_id,
+    Number(req.query.page) || 1
+  );
 
   send_response(res, {
     success: true,
@@ -65,10 +69,23 @@ const send_message = catch_async(async (req, res) => {
     data: result,
   });
 });
+const get_user_list_of_a_chat = catch_async(async (req, res) => {
+  const result = await ChatRoomService.get_user_list_of_a_chat(
+    req.params.chat_room_id
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "user list fetched",
+    data: result,
+  });
+});
 
 export const ChatRoomController = {
   get_user_chat_list,
   get_message_data,
   send_image,
   send_message,
+  get_user_list_of_a_chat,
 };
