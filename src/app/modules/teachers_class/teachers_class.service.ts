@@ -23,6 +23,7 @@ import { create_default_class_chats } from "../../helperFunction/with_db_query/c
 import { app_config } from "../../config";
 import unlink_file from "../../middleware/fileUpload/multer_file_storage/unlink_files";
 import Kids from "../users/users_kids/users_kids.model";
+import { ensureParentChats } from "../../helperFunction/with_db_query/add_parent_to_class_group_when_add";
 
 //import AppError from "../../errors/AppError";
 
@@ -232,7 +233,7 @@ const add_kids_to_class = async (
     } else {
       class_parent = [parant_class];
     }
-
+    await ensureParentChats(data.parent_id, teacher_id, data.class_id, session);
     await session.commitTransaction();
     session.endSession();
 

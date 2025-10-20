@@ -4,6 +4,7 @@ import { ClientSession, Types } from "mongoose";
 import ChatRoom from "../../modules/chat/chat_room/chat_room.model";
 import { ChatRoomMember } from "../../modules/chat/chat_room_members/chat_room_members.model";
 import { chat_member_type } from "../../modules/chat/chat_room_members/chat_room_members.interface";
+
 export async function ensureParentChats(
   parentId: string,
   teacherId: string,
