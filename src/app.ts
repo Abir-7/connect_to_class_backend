@@ -23,6 +23,7 @@ const allowedOrigins = [
   "http://192.168.50.85:3000",
   "http://10.10.12.62:3001",
   "https://01t71ck4-3000.inc1.devtunnels.ms",
+  "https://connect-to-class-dashboard.vercel.app",
   // Add your production domain here
 ];
 

@@ -14,6 +14,8 @@ export const validate_otp = (
 ): void => {
   const { otp: stored_otp, expires_at } = authentication;
 
+  // console.log(stored_otp, expires_at, new Date() > new Date());
+  // console.log(new Date(), new Date(expires_at));
   if (!stored_otp || !expires_at || new Date() > new Date(expires_at)) {
     throw new AppError(status.BAD_REQUEST, "OTP expired or not found.");
   }

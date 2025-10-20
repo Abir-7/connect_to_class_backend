@@ -19,14 +19,14 @@ import { TUserRole } from "../../interface/auth.interface";
 import { generate_tokens } from "../../helperFunction/general/generate_token";
 import { validate_otp } from "../../helperFunction/general/validate_otp";
 
-const expires_at = get_expiry_time(10);
-
 const create_user = async (data: {
   email: string;
   full_name: string;
   password: string;
   role: TUserRole;
 }) => {
+  const expires_at = get_expiry_time(10);
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -65,7 +65,7 @@ const create_user = async (data: {
       user: created_user[0]._id,
     };
     await UserProfile.create([user_profile_data], { session });
-    console.log(data.email);
+
     await publish_job("email_queue", {
       to: data.email,
       subject: "Email Verification Code",
@@ -88,8 +88,9 @@ const create_user = async (data: {
 };
 
 const user_login = async (login_data: { email: string; password: string }) => {
-  // Select only needed fields + password
-  const user = await User.findOne({ email: login_data.email })
+  const provided_email = login_data.email?.toLowerCase();
+
+  const user = await User.findOne({ email: provided_email })
     .select("email role password is_verified")
     .lean(); // returns plain JS object, faster than Mongoose doc
 
@@ -139,7 +140,7 @@ const verify_email = async (user_id: string, otp: number) => {
       "OTP is required. Check your email."
     );
   }
-  console.log(user_id);
+
   const user = await User.findOne({ _id: user_id });
   if (!user) {
     throw new AppError(status.BAD_REQUEST, "User not found.");
@@ -187,6 +188,7 @@ const verify_reset = async (
   need_to_reset_password: boolean | undefined;
   token: string | null;
 }> => {
+  const expires_at = get_expiry_time(10);
   if (!otp) {
     throw new AppError(status.BAD_REQUEST, "Give the Code. Check your email.");
   }
@@ -226,7 +228,9 @@ const verify_reset = async (
 const forgot_password_request = async (
   email: string
 ): Promise<{ email: string; user_id: string }> => {
-  const user = await User.findOne({ email });
+  const expires_at = get_expiry_time(10);
+  const provided_email = email?.toLowerCase();
+  const user = await User.findOne({ email: provided_email });
 
   if (!user) {
     throw new AppError(status.BAD_REQUEST, "Email not found.");
@@ -242,13 +246,13 @@ const forgot_password_request = async (
   };
 
   await publish_job("email_queue", {
-    to: email,
+    to: provided_email,
     subject: "Reset Password Verification Code",
     body: otp.toString(),
   });
 
   await User.findOneAndUpdate(
-    { email },
+    { email: provided_email },
     { authentication: data },
     { new: true }
   );
@@ -295,7 +299,6 @@ const reset_password = async (
     token,
     app_config.jwt.jwt_access_secret as string
   );
-  console.log(decoded, token);
 
   const hashed_password = await get_hashed_password(new_password);
 
