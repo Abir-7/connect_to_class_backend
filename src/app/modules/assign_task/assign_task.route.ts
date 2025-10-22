@@ -18,8 +18,8 @@ router.get(
   AssignTaskController.teacher_tasks_list
 );
 
-router.get(
-  "/mark-as-complete",
+router.patch(
+  "/update-status",
   auth("TEACHER"),
   AssignTaskController.update_task_status
 );

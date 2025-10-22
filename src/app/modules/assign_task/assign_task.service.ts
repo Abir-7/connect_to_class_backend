@@ -165,29 +165,25 @@ const update_task_status = async (
 ) => {
   // Find the task
 
-  console.log(task_id, user_id);
   const task = await Task.findOne({ _id: task_id, assign_to: user_id });
   if (!task) {
     throw new Error("Task not found");
   }
 
   // Prevent updating a task that's already completed
-  if (task.status === TaskStatus.COMPLETED) {
-    throw new Error("Cannot update a task that is already completed");
-  }
 
-  // Validate status transition
-  const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
-    [TaskStatus.PENDING]: [TaskStatus.ONGOING, TaskStatus.COMPLETED],
-    [TaskStatus.ONGOING]: [TaskStatus.COMPLETED],
-    [TaskStatus.COMPLETED]: [], // Already handled above
-  };
+  // // Validate status transition
+  // const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
+  //   [TaskStatus.PENDING]: [TaskStatus.ONGOING, TaskStatus.COMPLETED],
+  //   [TaskStatus.ONGOING]: [TaskStatus.COMPLETED],
+  //   [TaskStatus.COMPLETED]: [], // Already handled above
+  // };
 
-  if (!allowedTransitions[task.status].includes(newStatus)) {
-    throw new Error(
-      `Invalid status transition from ${task.status} to ${newStatus}`
-    );
-  }
+  // if (!allowedTransitions[task.status].includes(newStatus)) {
+  //   throw new Error(
+  //     `Invalid status transition from ${task.status} to ${newStatus}`
+  //   );
+  // }
 
   // Update status
   task.status = newStatus;
