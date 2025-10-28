@@ -46,6 +46,7 @@ const create_teachers_class = async (
       ...data,
       image: data.image ? `${app_config.server.baseurl}${data.image}` : "",
       teacher: teacher_id,
+      image_id: data.image ? `${data.image}` : "",
     };
     const created_class = await TeachersClass.create([classData], { session });
 
@@ -552,6 +553,40 @@ const removeKidsFromClass = async (class_id: string, kids_id: string) => {
   return { message: "Kid removed from class successfully." };
 };
 
+const editClass = async (
+  class_id: string,
+  data: {
+    class_name: string;
+    image: string;
+    description: string;
+    image_id: string;
+  }
+) => {
+  const find_class = await TeachersClass.findOne({ _id: class_id });
+
+  if (!find_class) {
+    throw new AppError(404, "No Class found to update.");
+  }
+
+  const old_image = find_class.image_id;
+
+  const updated_data = await TeachersClass.findOneAndUpdate(
+    { _id: class_id },
+    data,
+    { new: true }
+  );
+
+  if (data.image) {
+    unlink_file(old_image);
+  }
+
+  if (!updated_data && data.image) {
+    unlink_file(data.image_id);
+  }
+
+  return updated_data;
+};
+
 export const TeachersClassService = {
   create_teachers_class,
   get_my_class,
@@ -560,4 +595,5 @@ export const TeachersClassService = {
   add_kids_to_class,
   get_kids_parent_list_of_a_class,
   removeKidsFromClass,
+  editClass,
 };

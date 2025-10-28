@@ -25,6 +25,26 @@ const create_teachers_class = catch_async(async (req, res) => {
   });
 });
 
+const editTeacherClass = catch_async(async (req, res) => {
+  const filePath = req.file?.path;
+
+  const class_data = {
+    ...req.body,
+    ...(filePath && { image: get_relative_path(filePath) }),
+  };
+  const result = await TeachersClassService.editClass(
+    req.params.class_id,
+    class_data
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Class  successfully created.",
+    data: result,
+  });
+});
+
 const get_my_class = catch_async(async (req, res) => {
   const result = await TeachersClassService.get_my_class(req.user.user_id);
 
@@ -98,4 +118,5 @@ export const TeachersClassController = {
   add_kids_to_class,
   get_kids_parent_list_of_a_class,
   removeKidsFromClass,
+  editTeacherClass,
 };

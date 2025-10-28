@@ -6,6 +6,7 @@ const teachers_class_schema: Schema<ITeachersClass> = new Schema(
     class_name: { type: String, required: true },
     description: { type: String, required: true },
     image: { type: String, default: "" },
+    image_id: { type: String, default: "" },
     teacher: {
       type: Schema.Types.ObjectId,
       ref: "User",

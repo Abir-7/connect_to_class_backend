@@ -5,6 +5,7 @@ export interface ITeachersClass extends Document {
   description: string;
   image: string;
   teacher: Types.ObjectId;
+  image_id: string;
 }
 
 export enum ClassMemberFilter {

@@ -9,7 +9,7 @@ export const create_default_class_chats = async (
   session?: ClientSession
 ) => {
   const defaultChats = [
-    { type: "group", class: classId },
+    // { type: "group", class: classId },
     { type: "teacher_only", class: classId },
   ];
 

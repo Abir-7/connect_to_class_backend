@@ -51,5 +51,10 @@ router.delete(
   auth("TEACHER"),
   TeachersClassController.removeKidsFromClass
 );
+router.patch(
+  "/edit-class/:class_id",
+  auth("TEACHER"),
+  TeachersClassController.removeKidsFromClass
+);
 
 export const TeachersClassRoute = router;
