@@ -576,7 +576,7 @@ const editClass = async (
     { new: true }
   );
 
-  if (data.image) {
+  if (data.image && old_image) {
     unlink_file(old_image);
   }
 

@@ -24,6 +24,7 @@ const get_user_chat_list = catch_async(async (req, res) => {
 const get_message_data = catch_async(async (req, res) => {
   const result = await ChatRoomService.get_message_data(
     req.params.chat_id,
+    req.user.user_role,
     Number(req.query.page) || 1
   );
 
@@ -81,6 +82,19 @@ const get_user_list_of_a_chat = catch_async(async (req, res) => {
     data: result,
   });
 });
+const edit_chatRoom = catch_async(async (req, res) => {
+  const result = await ChatRoomService.edit_chatRoom(
+    req.params.chat_room_id,
+    req.query.status as "on" | "off"
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "user list fetched",
+    data: result,
+  });
+});
 
 export const ChatRoomController = {
   get_user_chat_list,
@@ -88,4 +102,5 @@ export const ChatRoomController = {
   send_image,
   send_message,
   get_user_list_of_a_chat,
+  edit_chatRoom,
 };

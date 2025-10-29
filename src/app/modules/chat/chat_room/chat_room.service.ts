@@ -302,10 +302,17 @@ const get_user_chat_list = async (
   return { data: processedData, meta };
 };
 
-const get_message_data = async (chatId: string, page = 1, limit = 50) => {
+const get_message_data = async (
+  chatId: string,
+  user_role: string,
+  page = 1,
+  limit = 50
+) => {
   if (!mongoose.Types.ObjectId.isValid(chatId)) {
     throw new Error("Invalid chat ID");
   }
+
+  const chatroom_data = await ChatRoom.findById(chatId).lean();
 
   const skip = (page - 1) * limit;
 
@@ -363,7 +370,12 @@ const get_message_data = async (chatId: string, page = 1, limit = 50) => {
     page,
   };
 
-  return { messages, meta };
+  return {
+    can_send_message: chatroom_data?.can_user_send_message,
+    user_role,
+    messages,
+    meta,
+  };
 };
 
 export const send_image = async (images: string[]) => {
@@ -398,7 +410,7 @@ const send_message = async (
   user_id: string,
   chat_id: string
 ) => {
-  saveMessage({
+  await saveMessage({
     chat: chat_id,
     sender: user_id,
     images: message_data.images || [],
@@ -436,12 +448,27 @@ const get_user_list_of_a_chat = async (chat_id: string) => {
   };
 };
 
+const edit_chatRoom = async (chat_id: string, chat_status: "on" | "off") => {
+  const update = await ChatRoom.findOneAndUpdate(
+    { _id: chat_id, type: "teacher_only" }, // filter
+    { can_user_send_message: chat_status === "on" }, // update
+    { new: true } // return updated doc
+  );
+
+  if (!update) {
+    throw new AppError(404, "Chat not found to update");
+  }
+
+  return update;
+};
+
 export const ChatRoomService = {
   get_user_chat_list,
   get_message_data,
   send_image,
   send_message,
   get_user_list_of_a_chat,
+  edit_chatRoom,
 };
 
 /**

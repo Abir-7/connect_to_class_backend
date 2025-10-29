@@ -23,6 +23,12 @@ router.get(
   ChatRoomController.get_user_list_of_a_chat
 );
 
+router.patch(
+  "/edit/:chat_room_id",
+  auth("TEACHER"),
+  ChatRoomController.edit_chatRoom
+);
+
 router.post(
   "/send-image/:chat_id",
   auth("PARENT", "TEACHER"),
@@ -33,7 +39,6 @@ router.post(
 router.post(
   "/send-message/:chat_id",
   auth("PARENT", "TEACHER"),
-
   ChatRoomController.send_message
 );
 

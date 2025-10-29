@@ -54,7 +54,9 @@ router.delete(
 router.patch(
   "/edit-class/:class_id",
   auth("TEACHER"),
-  TeachersClassController.removeKidsFromClass
+  upload.single("image"),
+  parse_data_field("data"),
+  TeachersClassController.editTeacherClass
 );
 
 export const TeachersClassRoute = router;

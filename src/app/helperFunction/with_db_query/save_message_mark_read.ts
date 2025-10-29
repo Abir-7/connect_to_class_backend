@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import ChatRoom from "../../modules/chat/chat_room/chat_room.model";
-import AppError from "../../errors/AppError";
+
 import { markChatAsRead } from "./mark_message_as_read";
 import { Message } from "../../modules/chat/message/message.model";
 import logger from "../../utils/serverTools/logger";
@@ -26,7 +26,10 @@ export const saveMessage = async ({
   try {
     // 1️⃣ Check if chat exists
     const chatExists = await ChatRoom.exists({ _id: chat });
-    if (!chatExists) throw new AppError(404, "Chat not found");
+    if (!chatExists) {
+      logger.error(`Failed to save message in chat ${chat}`);
+      return;
+    }
 
     // 2️⃣ Save message
     const savedMessage = await Message.create({
@@ -74,6 +77,5 @@ export const saveMessage = async ({
     return savedMessage;
   } catch (err) {
     logger.error(`Failed to save message in chat ${chat}: ${err}`);
-    throw err; // rethrow so socket handler can handle it
   }
 };

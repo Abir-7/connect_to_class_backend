@@ -9,6 +9,13 @@ const chatRoomSchema = new Schema<IChatRoom>(
       required: false,
       default: null,
     },
+    can_user_send_message: {
+      type: Boolean,
+      default: function () {
+        // `this` refers to the document being created
+        return this.type === "individual";
+      },
+    },
     type: { type: String, enum: chatTypes, required: true },
     last_message: {
       type: Schema.Types.ObjectId,

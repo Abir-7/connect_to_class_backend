@@ -9,4 +9,5 @@ export interface IChatRoom extends Document {
   last_message?: Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
+  can_user_send_message: boolean;
 }

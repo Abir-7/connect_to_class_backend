@@ -4,13 +4,17 @@ import catch_async from "../../utils/serverTools/catch_async";
 import send_response from "../../utils/serverTools/send_response";
 import { TeachersClassService } from "./teachers_class.service";
 import { get_relative_path } from "../../middleware/fileUpload/multer_file_storage/get_relative_path";
+import { app_config } from "../../config";
 
 const create_teachers_class = catch_async(async (req, res) => {
   const filePath = req.file?.path;
 
   const class_data = {
     ...req.body,
-    ...(filePath && { image: get_relative_path(filePath) }),
+    ...(filePath && {
+      image: `${app_config.server.baseurl}${get_relative_path(filePath)}`,
+      image_id: get_relative_path(filePath),
+    }),
   };
   const result = await TeachersClassService.create_teachers_class(
     class_data,
@@ -30,8 +34,12 @@ const editTeacherClass = catch_async(async (req, res) => {
 
   const class_data = {
     ...req.body,
-    ...(filePath && { image: get_relative_path(filePath) }),
+    ...(filePath && {
+      image: `${app_config.server.baseurl}${get_relative_path(filePath)}`,
+      image_id: get_relative_path(filePath),
+    }),
   };
+
   const result = await TeachersClassService.editClass(
     req.params.class_id,
     class_data
