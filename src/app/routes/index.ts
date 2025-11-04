@@ -14,6 +14,7 @@ import { CalenderRouter } from "../modules/calender/calender.route";
 import { PrivacyRouter } from "../modules/privacy_policy/privacy_policy.route";
 import { TaskRoute } from "../modules/assign_task/assign_task.route";
 import { DashboardRoute } from "../modules/dashboard/dashboard.route";
+import { KidsProgressReportRoute } from "../modules/users/kids_progress_report/kids_progress_report.route";
 
 const router = Router();
 const api_routes = [
@@ -33,6 +34,7 @@ const api_routes = [
   { path: "/privacy", route: PrivacyRouter },
   { path: "/task", route: TaskRoute },
   { path: "/dashboard", route: DashboardRoute },
+  { path: "/kids-report", route: KidsProgressReportRoute },
 ];
 api_routes.forEach((route) => router.use(route.path, route.route));
 export default router;

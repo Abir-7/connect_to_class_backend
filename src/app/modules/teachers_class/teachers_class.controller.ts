@@ -42,7 +42,8 @@ const editTeacherClass = catch_async(async (req, res) => {
 
   const result = await TeachersClassService.editClass(
     req.params.class_id,
-    class_data
+    class_data,
+    req.user.user_id
   );
 
   send_response(res, {
@@ -119,6 +120,20 @@ const removeKidsFromClass = catch_async(async (req, res) => {
   });
 });
 
+const deleteClass = catch_async(async (req, res) => {
+  const result = await TeachersClassService.deleteClass(
+    req.params.class_id,
+    req.user.user_id
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: "Class deleted",
+    data: result,
+  });
+});
+
 export const TeachersClassController = {
   create_teachers_class,
   get_my_class,
@@ -127,4 +142,5 @@ export const TeachersClassController = {
   get_kids_parent_list_of_a_class,
   removeKidsFromClass,
   editTeacherClass,
+  deleteClass,
 };

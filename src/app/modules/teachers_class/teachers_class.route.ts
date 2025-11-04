@@ -58,5 +58,11 @@ router.patch(
   parse_data_field("data"),
   TeachersClassController.editTeacherClass
 );
+router.delete(
+  "/delete-class/:class_id",
+  auth("TEACHER"),
+
+  TeachersClassController.deleteClass
+);
 
 export const TeachersClassRoute = router;

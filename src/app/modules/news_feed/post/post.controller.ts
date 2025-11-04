@@ -18,7 +18,10 @@ const create_post = catch_async(async (req, res) => {
   };
 
   files?.forEach((file) => {
-    if (!file.mimetype.startsWith("image/")) {
+    if (
+      !file.mimetype.startsWith("image/") &&
+      !file.mimetype.startsWith("video/")
+    ) {
       filePaths.forEach((file_path) => unlink_file(file_path));
       throw new AppError(500, "Only image file supported.");
     }
@@ -72,4 +75,18 @@ const get_all_post = catch_async(async (req, res) => {
   });
 });
 
-export const PostController = { create_post, get_all_post };
+const deletePost = catch_async(async (req, res) => {
+  const result = await PostService.deletePost(
+    req.params.post_id,
+    req.user.user_id
+  );
+
+  send_response(res, {
+    success: true,
+    status_code: status.OK,
+    message: " Post deleted  successfully.",
+    data: result,
+  });
+});
+
+export const PostController = { create_post, get_all_post, deletePost };

@@ -5,10 +5,12 @@
 import mongoose from "mongoose";
 import AppError from "../../../errors/AppError";
 import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/cloudinaryUpload";
-import { uploadBufferToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/uploadBufferToCloudinary";
+
 import unlink_file from "../../../middleware/fileUpload/multer_file_storage/unlink_files";
 import { IMediaType } from "./post.interface";
 import { Post } from "./post.model";
+import { deleteFileFromCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/deleteFromCloudinary";
+import logger from "../../../utils/serverTools/logger";
 
 const create_post = async (
   post_data: { description: string },
@@ -48,22 +50,22 @@ const create_post = async (
       );
     }
 
-    if (file_paths?.length > 0) {
-      file_paths.map((filePath) => unlink_file(filePath));
-    }
-
     const created_post = await Post.create({
       ...post_data,
       teacher: user_id,
       files: uploadedFiles,
     });
 
+    if (file_paths?.length > 0) {
+      file_paths.map((filePath) => unlink_file(filePath));
+    }
+
     return created_post;
   } catch (error) {
     if (file_paths?.length > 0) {
       file_paths.map((filePath) => unlink_file(filePath));
     }
-    console.log(error);
+
     throw new AppError(500, "Failed to post");
   }
 };
@@ -303,6 +305,13 @@ const get_all_post = async (
         isLiked: { $gt: [{ $size: "$userLike" }, 0] },
       },
     },
+    {
+      $addFields: {
+        isMyPost: {
+          $eq: ["$teacher", new mongoose.Types.ObjectId(user_id)],
+        },
+      },
+    },
 
     // Sort & paginate
     { $sort: { createdAt: -1 } },
@@ -321,6 +330,7 @@ const get_all_post = async (
         total_replies: 1,
         total_likes: 1,
         isLiked: 1,
+        isMyPost: 1,
         teacher: {
           _id: "$teacherInfo._id",
           email: "$teacherInfo.email",
@@ -351,4 +361,23 @@ const get_all_post = async (
 
 export default get_all_post;
 
-export const PostService = { create_post, get_all_post };
+const deletePost = async (postId: string, user_id: string) => {
+  // Find the post first
+  const post = await Post.findOne({ _id: postId, teacher: user_id });
+  if (!post) throw new Error("Post not found");
+
+  // Remove the post from the database
+  const deletedPost = await Post.findByIdAndDelete(postId);
+  if (!deletedPost) throw new Error("Failed to delete post");
+
+  // Fire Cloudinary deletions in the background (don't await)
+  post.files.forEach((file) => {
+    deleteFileFromCloudinary(file.public_id).catch((err) =>
+      logger.error(`Failed to delete Cloudinary file ${file.public_id}:`, err)
+    );
+  });
+
+  return deletedPost;
+};
+
+export const PostService = { create_post, get_all_post, deletePost };

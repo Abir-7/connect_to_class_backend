@@ -18,4 +18,10 @@ router.post(
 
 router.get("/get-all", auth("TEACHER", "PARENT"), PostController.get_all_post);
 
+router.delete(
+  "/delete-post/:post_id",
+  auth("TEACHER"),
+  PostController.deletePost
+);
+
 export const PostRoute = router;

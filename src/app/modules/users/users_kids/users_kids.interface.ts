@@ -6,6 +6,7 @@ export interface IKids extends Document {
   full_name: string;
   image: string;
   avatar_id: string;
+  image_id: string;
 }
 export enum Gender {
   Male = "male",

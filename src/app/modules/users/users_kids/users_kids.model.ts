@@ -7,6 +7,7 @@ const kids_schema = new Schema<IKids>(
     gender: { type: String, enum: Object.values(Gender), required: true },
     full_name: { type: String, required: true },
     image: { type: String, default: "" },
+    image_id: { type: String, default: "" },
     avatar_id: { type: String, default: "" },
   },
   {

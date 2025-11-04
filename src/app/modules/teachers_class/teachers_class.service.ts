@@ -20,10 +20,11 @@ import logger from "../../utils/serverTools/logger";
 import AppError from "../../errors/AppError";
 import { create_default_class_chats } from "../../helperFunction/with_db_query/create_group_when_new_class_create";
 
-import { app_config } from "../../config";
 import unlink_file from "../../middleware/fileUpload/multer_file_storage/unlink_files";
 import Kids from "../users/users_kids/users_kids.model";
 import { ensureParentChats } from "../../helperFunction/with_db_query/add_parent_to_class_group_when_add";
+import ChatRoom from "../chat/chat_room/chat_room.model";
+import { ChatRoomMember } from "../chat/chat_room_members/chat_room_members.model";
 
 //import AppError from "../../errors/AppError";
 
@@ -44,7 +45,7 @@ const create_teachers_class = async (
     // 1️⃣ Create the class
     const classData = {
       ...data,
-      image: data.image ? `${app_config.server.baseurl}${data.image}` : "",
+      image: data.image ? `${data.image}` : "",
       teacher: teacher_id,
       image_id: data.image ? `${data.image}` : "",
     };
@@ -560,7 +561,8 @@ const editClass = async (
     image: string;
     description: string;
     image_id: string;
-  }
+  },
+  teacher_id: string
 ) => {
   const find_class = await TeachersClass.findOne({ _id: class_id });
 
@@ -583,8 +585,39 @@ const editClass = async (
   if (!updated_data && data.image) {
     unlink_file(data.image_id);
   }
-
+  // 4️⃣ Clear cache
+  const cache_key = `teacher_classes:${teacher_id}`;
+  await delete_cache(cache_key); // clear cache
   return updated_data;
+};
+
+const deleteClass = async (class_id: string, teacher_id: string) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    await TeachersClass.deleteOne({ _id: class_id }).session(session);
+    await KidsClass.deleteMany({ class: class_id }).session(session);
+    await ParentClass.deleteMany({ class: class_id }).session(session);
+
+    const chat_rooms = await ChatRoom.find({ class: class_id }).session(
+      session
+    );
+    const chat_room_ids = chat_rooms.map((r) => r._id);
+
+    await ChatRoom.deleteMany({ class: class_id }).session(session);
+    await ChatRoomMember.deleteMany({ chat: { $in: chat_room_ids } }).session(
+      session
+    );
+    const cache_key = `teacher_classes:${teacher_id}`;
+    await delete_cache(cache_key); // clear cache
+
+    await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 export const TeachersClassService = {
@@ -596,4 +629,5 @@ export const TeachersClassService = {
   get_kids_parent_list_of_a_class,
   removeKidsFromClass,
   editClass,
+  deleteClass,
 };

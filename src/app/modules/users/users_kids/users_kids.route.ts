@@ -16,10 +16,22 @@ router.post(
   zod_validator(zod_kids_schema),
   UserKidsController.add_users_kid
 );
+router.patch(
+  "/edit-kid/:kid_id",
+  auth("PARENT"),
+  upload.single("image"),
+  parse_data_field("data"),
+  UserKidsController.edit_kids_by_parent
+);
 router.get(
   "/get-kids-by-parent",
   auth("PARENT"),
   UserKidsController.get_kids_by_parent
+);
+router.delete(
+  "/delete-kid/:kid_id",
+  auth("PARENT"),
+  UserKidsController.deleteKid
 );
 
 export const UserKidsRoute = router;
