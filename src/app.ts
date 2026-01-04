@@ -19,7 +19,7 @@ import { StripeController } from "./app/modules/stripe/stripe.controller";
 const app = express();
 
 const allowedOrigins = [
-  "http://10.10.12.62:3000",
+  "http://10.10.12.63:3000",
   "http://192.168.50.85:3000",
   "http://72.62.7.53:3000",
   "https://01t71ck4-3000.inc1.devtunnels.ms",
