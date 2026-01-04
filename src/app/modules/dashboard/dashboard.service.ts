@@ -218,6 +218,7 @@ const get_all_users = async (
           : role === "ALL"
           ? { role: { $ne: "ADMIN" } }
           : { role },
+      is_verified: true,
     },
     {
       $lookup: {
