@@ -13,11 +13,11 @@ import { app_config } from "../../config";
 
 import mongoose from "mongoose";
 
-import { publish_job } from "../../lib/rabbitMq/publisher";
 import { json_web_token } from "../../utils/jwt/jwt";
 import { TUserRole } from "../../interface/auth.interface";
 import { generate_tokens } from "../../helperFunction/general/generate_token";
 import { validate_otp } from "../../helperFunction/general/validate_otp";
+import { emailQueue } from "../../lib/bullmq/queues/email.queue";
 
 const create_user = async (data: {
   email: string;
@@ -66,10 +66,14 @@ const create_user = async (data: {
     };
     await UserProfile.create([user_profile_data], { session });
 
-    await publish_job("email_queue", {
+    await emailQueue.add("sendEmail", {
       to: data.email,
-      subject: "Email Verification Code",
-      body: otp.toString(),
+      subject: "Verification",
+      code: otp.toString(),
+      project_name: "Connect To Class",
+      expire_time: 10,
+      purpose: "Verify your email",
+      body: "",
     });
 
     await session.commitTransaction();
@@ -245,10 +249,14 @@ const forgot_password_request = async (
     token: null,
   };
 
-  await publish_job("email_queue", {
+  await emailQueue.add("sendEmail", {
     to: provided_email,
-    subject: "Reset Password Verification Code",
-    body: otp.toString(),
+    subject: "Verification",
+    code: otp.toString(),
+    project_name: "Connect To Class",
+    expire_time: 10,
+    purpose: "Reset Password Verification Code",
+    body: "",
   });
 
   await User.findOneAndUpdate(
@@ -421,11 +429,14 @@ const re_send_otp = async (user_id: string): Promise<{ message: string }> => {
   user_data.authentication.expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 min
   await user_data.save();
 
-  // Step 5: Send email async job
-  await publish_job("email_queue", {
+  await emailQueue.add("sendEmail", {
     to: user_data.email,
-    subject: "Verification Code",
-    body: otp.toString(),
+    subject: "Verification",
+    code: otp.toString(),
+    project_name: "Connect To Class",
+    expire_time: 10,
+    purpose: "Verification Code",
+    body: "",
   });
 
   return { message: "Verification code sent." };
