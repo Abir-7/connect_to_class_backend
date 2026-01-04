@@ -24,6 +24,7 @@ const overview_recent_user = async (
       $match: {
         createdAt: { $gte: start, $lte: end },
         role: { $ne: "ADMIN" }, // skip admins
+        is_verified: true,
       },
     },
     {
