@@ -9,8 +9,7 @@ import { IUserProfile } from "./user_profile.interface";
 import { remove_falsy_fields } from "../../../utils/helper/remove_falsy_field";
 import { delete_cache } from "../../../lib/redis/cache";
 import { uploadFileToCloudinary } from "../../../middleware/fileUpload/cloudinay_file_upload/cloudinaryUpload";
-
-import { publish_job } from "../../../lib/rabbitMq/publisher";
+import { deleteImageQueue } from "../../../lib/bullmq/queues/deleteImage.queue";
 
 const update_profile_image = async (path: string, email: string) => {
   const user = await User.findOne({ email: email });
@@ -92,7 +91,7 @@ const update_profile = async (
 
     // 2. Delete old image only if it exists
     if (existingProfile?.image_id) {
-      await publish_job("delete_image_queue", {
+      await deleteImageQueue.add("delete_image", {
         public_id: existingProfile.image_id,
       });
     }
